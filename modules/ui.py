@@ -356,11 +356,23 @@ def create_ui():
                                         minimum=1,
                                         maximum=8,
                                         step=1,
-                                        label="Batch size",
+                                        label="Batch size1",
                                         value=1,
                                         elem_id="txt2img_batch_size",
                                     )
-
+                                    multiple_run_count = gr.Slider(
+                                        minimum=1,
+                                        maximum=20,
+                                        step=1,
+                                        label="Multipy runs (bski)",
+                                        value=1,
+                                        elem_id="multiple_run_count",
+                                    )
+                                
+                            with gr.Column(elem_id="txt2img_column_size_poop"):
+                                    is_cool_split = gr.Checkbox(label='Cool split :)', value=False, elem_id="is_cool_split")
+                                    columnz_width = gr.Slider(label="columnz_width ", minimum=0, maximum=10, value=0, step=1, elem_id="columnz_width") #elem_id starting will "txt2img_res" will for min=1 and max=100, i have no idea why the dumbass devs would do that
+                                    
                     elif category == "cfg":
                         with gr.Row():
                             cfg_scale = gr.Slider(
@@ -519,7 +531,7 @@ def create_ui():
                                     minimum=1,
                                     maximum=8,
                                     step=1,
-                                    label="Batch size",
+                                    label="Batch size2",
                                     value=1,
                                     elem_id="txt2img_batch_size",
                                 )
@@ -592,6 +604,9 @@ def create_ui():
                 hr_prompt,
                 hr_negative_prompt,
                 override_settings,
+                multiple_run_count,
+                is_cool_split,
+                columnz_width,
             ] + custom_inputs
 
             txt2img_outputs = [
@@ -601,6 +616,7 @@ def create_ui():
                 output_panel.html_log,
             ]
 
+            # HERE txt2img() call
             txt2img_args = dict(
                 fn=wrap_gradio_gpu_call(
                     modules.txt2img.txt2img, extra_outputs=[None, "", ""]
@@ -610,7 +626,8 @@ def create_ui():
                 outputs=txt2img_outputs,
                 show_progress=False,
             )
-
+            print("txt2img_args")
+            print("txt2img_args",txt2img_args)
             toprow.prompt.submit(**txt2img_args)
             toprow.submit.click(**txt2img_args)
 
