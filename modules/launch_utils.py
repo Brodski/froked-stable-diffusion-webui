@@ -665,6 +665,11 @@ def prepare_environment():
             if not is_installed("onnxruntime-gpu"):
                 run_pip("install onnxruntime-gpu", "onnxruntime-gpu")
         elif backend == "rocm":
+            print("ROCM")
+            print("ROCM")
+            print("ROCM")
+            print("ROCM")
+            print("ROCM")
             if not is_installed("onnxruntime-training"):
                 command = subprocess.run(next(iter(glob.glob("/opt/rocm*/bin/hipconfig")), "hipconfig") + ' --version', shell=True, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 rocm_ver = command.stdout.decode(encoding="utf8", errors="ignore").split('.')

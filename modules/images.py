@@ -589,23 +589,23 @@ def save_image_with_geninfo(image, geninfo, filename, extension=None, existing_p
 
         image.save(filename, format=image_format, quality=opts.jpeg_quality, pnginfo=pnginfo_data)
 
-    elif extension.lower() in (".jpg", ".jpeg", ".webp"):
-        print("--- Doing something with jpg for some reason ---")
-        if image.mode == 'RGBA':
-            image = image.convert("RGB")
-        elif image.mode == 'I;16':
-            image = image.point(lambda p: p * 0.0038910505836576).convert("RGB" if extension.lower() == ".webp" else "L")
+    # elif extension.lower() in (".jpg", ".jpeg", ".webp"):
+    #     print("--- Doing something with jpg for some reason ---")
+    #     if image.mode == 'RGBA':
+    #         image = image.convert("RGB")
+    #     elif image.mode == 'I;16':
+    #         image = image.point(lambda p: p * 0.0038910505836576).convert("RGB" if extension.lower() == ".webp" else "L")
 
-        image.save(filename, format=image_format, quality=opts.jpeg_quality, lossless=opts.webp_lossless)
+    #     image.save(filename, format=image_format, quality=opts.jpeg_quality, lossless=opts.webp_lossless)
 
-        if opts.enable_pnginfo and geninfo is not None:
-            exif_bytes = piexif.dump({
-                "Exif": {
-                    piexif.ExifIFD.UserComment: piexif.helper.UserComment.dump(geninfo or "", encoding="unicode")
-                },
-            })
+    #     if opts.enable_pnginfo and geninfo is not None:
+    #         exif_bytes = piexif.dump({
+    #             "Exif": {
+    #                 piexif.ExifIFD.UserComment: piexif.helper.UserComment.dump(geninfo or "", encoding="unicode")
+    #             },
+    #         })
 
-            piexif.insert(exif_bytes, filename)
+    #         piexif.insert(exif_bytes, filename)
     elif extension.lower() == '.avif':
         if opts.enable_pnginfo and geninfo is not None:
             exif_bytes = piexif.dump({

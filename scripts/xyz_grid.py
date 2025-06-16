@@ -366,7 +366,9 @@ def draw_xyz_grid(p, xs, ys, zs, x_labels, y_labels, z_labels, cell, draw_legend
         print("## Multi run:", (i_multi + 1), "of", p.multiple_run_count)
         print()
         print("tricky_lazy_seed_counter:", tricky_lazy_seed_counter)
-        p.seed = p.seed + tricky_lazy_seed_counter # this is not a accurate counter, but it does increment
+        print("tricky - p.seed before:", p.seed)
+        p.seed = p.seed + tricky_lazy_seed_counter if p.seed != -1 else p.seed # this is not a accurate counter, but it does increment
+        print("tricky - p.seed after:", p.seed)
 
         if first_axes_processed == 'x':
             for ix, x in enumerate(xs):
@@ -374,37 +376,31 @@ def draw_xyz_grid(p, xs, ys, zs, x_labels, y_labels, z_labels, cell, draw_legend
                     for iy, y in enumerate(ys):
                         for iz, z in enumerate(zs):
                             process_cell(x, y, z, ix, iy, iz, i_multi)
-                            tricky_lazy_seed_counter += 1
                 else:
                     for iz, z in enumerate(zs):
                         for iy, y in enumerate(ys):
                             process_cell(x, y, z, ix, iy, iz, i_multi)
-                            tricky_lazy_seed_counter += 1
         elif first_axes_processed == 'y':
             for iy, y in enumerate(ys):
                 if second_axes_processed == 'x':
                     for ix, x in enumerate(xs):
                         for iz, z in enumerate(zs):
                             process_cell(x, y, z, ix, iy, iz, i_multi)
-                            tricky_lazy_seed_counter += 1
                 else:
                     for iz, z in enumerate(zs):
                         for ix, x in enumerate(xs):
                             process_cell(x, y, z, ix, iy, iz, i_multi)
-                            tricky_lazy_seed_counter += 1
         elif first_axes_processed == 'z':
             for iz, z in enumerate(zs):
                 if second_axes_processed == 'x':
                     for ix, x in enumerate(xs):
                         for iy, y in enumerate(ys):
                             process_cell(x, y, z, ix, iy, iz, i_multi)
-                            tricky_lazy_seed_counter += 1
                 else:
                     for iy, y in enumerate(ys):
                         for ix, x in enumerate(xs):
                             process_cell(x, y, z, ix, iy, iz, i_multi)
-                            tricky_lazy_seed_counter += 1
-
+        tricky_lazy_seed_counter += 1
     if not processed_result:
         # Should never happen, I've only seen it on one of four open tabs and it needed to refresh.
         print("Unexpected error: Processing could not begin, you may need to refresh the tab or restart the service.")
@@ -784,12 +780,14 @@ class Script(scripts.Script):
             xdim = len(xs) if vary_seeds_x else 1
             ydim = len(ys) if vary_seeds_y else 1
 
+            print('BEFORE pc.seed:', pc.seed)
             if vary_seeds_x:
                 pc.seed += ix
             if vary_seeds_y:
                 pc.seed += iy * xdim
             if vary_seeds_z:
                 pc.seed += iz * xdim * ydim
+            print('AFTER pc.seed:', pc.seed)
 
             try:
                 res = process_images(pc)

@@ -70,5 +70,9 @@ def initialize():
     if not cmd_opts.skip_ort:
         from modules.onnx_impl import initialize_onnx
         initialize_onnx()
+    # torch.cuda.set_per_process_memory_fraction(0.7) 
 
+    print(f"Number of GPUs available: {torch.cuda.device_count()}")
+    if torch.cuda.is_available():
+        print(f"\nCurrent GPU ID: {torch.cuda.current_device()}")
     initialize_zluda()

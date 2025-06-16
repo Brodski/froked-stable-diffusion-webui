@@ -121,6 +121,7 @@ def webui():
         timer.startup_record = startup_timer.dump()
         print(f"Startup time: {startup_timer.summary()}.")
 
+        exit_app_counter = 0
         try:
             while True:
                 server_command = shared.state.wait_for_server_command(timeout=5)
@@ -132,6 +133,9 @@ def webui():
         except KeyboardInterrupt:
             print('Caught KeyboardInterrupt, stopping...')
             server_command = "stop"
+            exit_app_counter = exit_app_counter + 1
+            if exit_app_counter > 3:
+                exit(1)
 
         if server_command == "stop":
             print("Stopping server...")

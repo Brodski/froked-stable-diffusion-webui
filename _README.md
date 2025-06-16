@@ -1,4 +1,6 @@
 
 A1111
 .\venv\Scripts\activate
-python .\launch.py --use-zluda
+ python .\launch.py --use-zluda --skip-ort
+
+ 

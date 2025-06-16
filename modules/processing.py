@@ -872,7 +872,6 @@ def process_images_inner(p: StableDiffusionProcessing) -> Processed:
         assert p.prompt is not None
 
     devices.torch_gc()
-
     seed = get_fixed_seed(p.seed)
     subseed = get_fixed_seed(p.subseed)
 
@@ -1023,9 +1022,11 @@ def process_images_inner(p: StableDiffusionProcessing) -> Processed:
 
         if state.job_count == -1:
             state.job_count = p.n_iter
-
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         for n in range(p.n_iter):
-            print("Using seed:", p.seed)
+            print("SEED PRE, p.seed:", p.seed)
+        for n in range(p.n_iter):
+            print("Using seed:", p.seed, "\n")
             p.iteration = n
 
             if state.skipped:
@@ -1080,7 +1081,7 @@ def process_images_inner(p: StableDiffusionProcessing) -> Processed:
                 shared.state.job = f"Batch {n+1} out of {p.n_iter}"
 
             sd_models.apply_alpha_schedule_override(p.sd_model, p)
-
+            print("bang 7")
             with devices.without_autocast() if devices.unet_needs_upcast else devices.autocast():
                 samples_ddim = p.sample(conditioning=p.c, unconditional_conditioning=p.uc, seeds=p.seeds, subseeds=p.subseeds, subseed_strength=p.subseed_strength, prompts=p.prompts)
 

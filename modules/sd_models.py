@@ -766,8 +766,10 @@ def send_model_to_trash(m):
 
 def instantiate_from_config(config, state_dict=None):
     constructor = get_obj_from_str(config["target"])
-
+    print("instantiate_from_config")
+    print("constructor:", constructor)
     params = {**config.get("params", {})}
+    # print("paramzz:", params)
 
     if state_dict and "state_dict" in params and params["state_dict"] is None:
         params["state_dict"] = state_dict

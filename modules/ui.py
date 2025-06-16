@@ -294,6 +294,9 @@ def create_ui():
 
     parameters_copypaste.reset()
 
+    with gr.Blocks(analytics_enabled=False) as custom_shit:
+        gr.Markdown("# Title")
+
     settings = ui_settings.UiSettings()
     settings.register_settings()
 
@@ -325,18 +328,19 @@ def create_ui():
                             with gr.Column(elem_id="txt2img_column_size", scale=4):
                                 width = gr.Slider(
                                     minimum=64,
-                                    maximum=2048,
+                                    maximum=3052,
                                     step=8,
-                                    label="Width",
-                                    value=512,
+                                    label="Width - 512 - 768 - 1024",
+                                    value=768,
                                     elem_id="txt2img_width",
                                 )
                                 height = gr.Slider(
                                     minimum=64,
-                                    maximum=2048,
+                                    # maximum=2048, XXX
+                                    maximum=3052,
                                     step=8,
-                                    label="Height",
-                                    value=512,
+                                    label="Height - 512 - 1024|1344|1536 - 2048",
+                                    value=1536,
                                     elem_id="txt2img_height",
                                 )
 
@@ -626,8 +630,7 @@ def create_ui():
                 outputs=txt2img_outputs,
                 show_progress=False,
             )
-            print("txt2img_args")
-            print("txt2img_args",txt2img_args)
+
             toprow.prompt.submit(**txt2img_args)
             toprow.submit.click(**txt2img_args)
 
@@ -1720,6 +1723,8 @@ def create_ui():
 
         parameters_copypaste.connect_paste_params_buttons()
 
+        # gr.Markdown("Title edit 😎")
+        gr.HTML('<div> "Title edit 😎 </div> <input type="text" onkeyup="document.title=this.value" placeholder="Stable Diffusion" style="color: black; font-weight: bold;">')
         with gr.Tabs(elem_id="tabs") as tabs:
             tab_order = {k: i for i, k in enumerate(opts.ui_tab_order)}
             sorted_interfaces = sorted(
@@ -1750,6 +1755,7 @@ def create_ui():
             else "https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/API",
         )
         gr.HTML(footer, elem_id="footer")
+        gr.Markdown("# Title")
 
         settings.add_functionality(demo)
 

@@ -34,7 +34,8 @@ class FaceRestorerGFPGAN(face_restoration_utils.CommonFaceRestoration):
             command_path=self.model_path,
             download_name=model_download_name,
             ext_filter=['.pth'],
-        ):
+        ):  
+            print('!!!  LOAD_NET: model_path', model_path)
             if 'GFPGAN' in os.path.basename(model_path):
                 return modelloader.load_spandrel_model(
                     model_path,
