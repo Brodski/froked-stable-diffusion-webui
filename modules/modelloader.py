@@ -29,6 +29,10 @@ def load_file_from_url(
 
     Returns the path to the downloaded file.
     """
+    print("load_file_from_url running ...........")
+    for param, val in locals().items():
+        print(f"{param}: {val}")
+
     os.makedirs(model_dir, exist_ok=True)
     if not file_name:
         parts = urlparse(url)
@@ -54,10 +58,9 @@ def load_models(model_path: str, model_url: str = None, command_path: str = None
     @return: A list of paths containing the desired model(s)
     """
     output = []
-
+    print('load_models bs.......')
     try:
         places = []
-
         if command_path is not None and command_path != model_path:
             pretrained_path = os.path.join(command_path, 'experiments/pretrained_models')
             if os.path.exists(pretrained_path):
@@ -77,7 +80,6 @@ def load_models(model_path: str, model_url: str = None, command_path: str = None
                     continue
                 if full_path not in output:
                     output.append(full_path)
-
         if model_url is not None and len(output) == 0:
             if download_name is not None:
                 output.append(load_file_from_url(model_url, model_dir=places[0], file_name=download_name, hash_prefix=hash_prefix))

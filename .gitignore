@@ -8,6 +8,8 @@ __pycache__
 /repositories
 /venv
 /tmp
+/cache
+/footprints
 /model.ckpt
 /models/**/*
 /GFPGANv1.3.pth
@@ -42,3 +44,4 @@ notification.mp3
 /cache
 trace.json
 /sysinfo-????-??-??-??-??.json
+.zluda/

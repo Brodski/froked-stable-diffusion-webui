@@ -12,7 +12,7 @@ from omegaconf import OmegaConf, ListConfig
 from urllib import request
 import ldm.modules.midas as midas
 
-from modules import paths, shared, modelloader, devices, script_callbacks, sd_vae, sd_disable_initialization, errors, hashes, sd_models_config, sd_unet, sd_models_xl, cache, extra_networks, processing, lowvram, sd_hijack, patches
+from modules import paths, shared, shared_items, modelloader, devices, script_callbacks, sd_vae, sd_disable_initialization, errors, hashes, sd_models_config, sd_unet, sd_models_xl, cache, extra_networks, processing, lowvram, sd_hijack, patches
 from modules.timer import Timer
 from modules.shared import opts
 import tomesd
@@ -87,9 +87,9 @@ class CheckpointInfo:
         self.name = name
         self.name_for_extra = os.path.splitext(os.path.basename(filename))[0]
         self.model_name = os.path.splitext(name.replace("/", "_").replace("\\", "_"))[0]
-        self.hash = model_hash(filename)
+        self.hash = model_hash(filename) if os.path.isfile(filename) else None
 
-        self.sha256 = hashes.sha256_from_cache(self.filename, f"checkpoint/{name}")
+        self.sha256 = hashes.sha256_from_cache(self.filename, f"checkpoint/{name}") if os.path.isfile(filename) else None
         self.shorthash = self.sha256[0:10] if self.sha256 else None
 
         self.title = name if self.shorthash is None else f'{name} [{self.shorthash}]'
@@ -766,8 +766,10 @@ def send_model_to_trash(m):
 
 def instantiate_from_config(config, state_dict=None):
     constructor = get_obj_from_str(config["target"])
-
+    print("instantiate_from_config")
+    print("constructor:", constructor)
     params = {**config.get("params", {})}
+    # print("paramzz:", params)
 
     if state_dict and "state_dict" in params and params["state_dict"] is None:
         params["state_dict"] = state_dict
@@ -790,9 +792,20 @@ def load_model(checkpoint_info=None, already_loaded_state_dict=None):
     timer = Timer()
 
     if model_data.sd_model:
+        if not shared.opts.onnx_enable:
+            sd_hijack.model_hijack.undo_hijack(model_data.sd_model)
         send_model_to_trash(model_data.sd_model)
         model_data.sd_model = None
-        devices.torch_gc()
+
+    if shared.opts.onnx_enable:
+        pipeline = shared_items.get_pipelines().get(shared.opts.diffusers_pipeline, None)
+        if os.path.isdir(checkpoint_info.filename):
+            model_data.sd_model = pipeline.from_pretrained(checkpoint_info.filename)
+        else:
+            model_data.sd_model = pipeline.from_single_file(checkpoint_info.filename)
+        model_data.sd_model.sd_checkpoint_info = checkpoint_info
+        model_data.sd_model.sd_model_hash = checkpoint_info.hash
+        return model_data.sd_model
 
     timer.record("unload existing model")
 
@@ -944,6 +957,10 @@ def reload_model_weights(sd_model=None, info=None, forced_reload=False):
 
     if not sd_model:
         sd_model = model_data.sd_model
+
+    if shared.opts.onnx_enable:
+        load_model(checkpoint_info)
+        return model_data.sd_model
 
     if sd_model is None:  # previous model load failed
         current_checkpoint_info = None

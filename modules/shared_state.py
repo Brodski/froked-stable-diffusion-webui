@@ -166,3 +166,10 @@ class State:
             image = image.convert('RGB')
         self.current_image = image
         self.id_live_preview += 1
+
+
+class CompiledModelState:
+    def __init__(self):
+        self.height = 512
+        self.width = 512
+        self.batch_size = 1

@@ -4,6 +4,8 @@ import torch
 
 from modules import shared
 from modules.shared import cmd_opts
+from modules.dml import directml_init, directml_do_hijack
+from modules.zluda import initialize_zluda
 
 
 def initialize():
@@ -22,6 +24,12 @@ def initialize():
         shared.opts.load(shared.config_filename)
     except FileNotFoundError:
         pass
+
+    if cmd_opts.use_directml:
+        directml_init()
+        directml_do_hijack()
+    else:
+        torch.Tensor.__str__ = lambda self: None
 
     from modules import devices
     devices.device, devices.device_interrogate, devices.device_gfpgan, devices.device_esrgan, devices.device_codeformer = \
@@ -44,6 +52,7 @@ def initialize():
 
     from modules import shared_state
     shared.state = shared_state.State()
+    shared.compiled_model_state = shared_state.CompiledModelState()
 
     from modules import styles
     shared.prompt_styles = styles.StyleDatabase(shared.styles_filename)
@@ -58,3 +67,12 @@ def initialize():
     shared.mem_mon = memmon.MemUsageMonitor("MemMon", devices.device, shared.opts)
     shared.mem_mon.start()
 
+    if not cmd_opts.skip_ort:
+        from modules.onnx_impl import initialize_onnx
+        initialize_onnx()
+    # torch.cuda.set_per_process_memory_fraction(0.7) 
+
+    print(f"Number of GPUs available: {torch.cuda.device_count()}")
+    if torch.cuda.is_available():
+        print(f"\nCurrent GPU ID: {torch.cuda.current_device()}")
+    initialize_zluda()

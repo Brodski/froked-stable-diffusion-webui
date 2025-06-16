@@ -4,6 +4,7 @@ accelerate
 
 blendmodes
 clean-fid
+diffusers==0.30.2
 diskcache
 einops
 facexlib
@@ -18,7 +19,7 @@ omegaconf
 open-clip-torch
 
 piexif
-protobuf==3.20.0
+protobuf==3.20.2
 psutil
 pytorch_lightning
 requests
@@ -27,8 +28,13 @@ resize-right
 safetensors
 scikit-image>=0.19
 tomesd
-torch
+torch>=2.0.0
 torchdiffeq
 torchsde
-transformers==4.30.2
+transformers
 pillow-avif-plugin==1.4.3
+
+onnx==1.16.2
+onnxruntime
+optimum>=1.23
+olive-ai

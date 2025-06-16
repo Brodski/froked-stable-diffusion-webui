@@ -9,6 +9,7 @@ import importlib.util
 import importlib.metadata
 import platform
 import json
+import glob
 import shlex
 from functools import lru_cache
 
@@ -21,12 +22,12 @@ args, _ = cmd_args.parser.parse_known_args()
 logging_config.setup_logging(args.loglevel)
 
 python = sys.executable
-git = os.environ.get('GIT', "git")
-index_url = os.environ.get('INDEX_URL', "")
+git = os.environ.get("GIT", "git")
+index_url = os.environ.get("INDEX_URL", "")
 dir_repos = "repositories"
 
 # Whether to default to printing command output
-default_command_live = (os.environ.get('WEBUI_LAUNCH_LIVE_OUTPUT') == "1")
+default_command_live = os.environ.get("WEBUI_LAUNCH_LIVE_OUTPUT") == "1"
 
 os.environ.setdefault('GRADIO_ANALYTICS_ENABLED', 'False')
 
@@ -45,7 +46,8 @@ def check_python_version():
     if not (major == 3 and minor in supported_minors):
         import modules.errors
 
-        modules.errors.print_error_explanation(f"""
+        modules.errors.print_error_explanation(
+            f"""
 INCOMPATIBLE PYTHON VERSION
 
 This program is tested with 3.10.6 Python, but you have {major}.{minor}.{micro}.
@@ -59,7 +61,8 @@ You can download 3.10 Python from here: https://www.python.org/downloads/release
 {"Alternatively, use a binary release of WebUI: https://github.com/AUTOMATIC1111/stable-diffusion-webui/releases/tag/v1.0.0-pre" if is_windows else ""}
 
 Use --skip-python-version-check to suppress this warning.
-""")
+"""
+        )
 
 
 @lru_cache()
@@ -76,7 +79,6 @@ def git_tag():
         return subprocess.check_output([git, "-C", script_path, "describe", "--tags"], shell=False, encoding='utf8').strip()
     except Exception:
         try:
-
             changelog_md = os.path.join(script_path, "CHANGELOG.md")
             with open(changelog_md, "r", encoding="utf-8") as file:
                 line = next((line.strip() for line in file if line.strip()), "<none>")
@@ -86,7 +88,9 @@ def git_tag():
             return "<none>"
 
 
-def run(command, desc=None, errdesc=None, custom_env=None, live: bool = default_command_live) -> str:
+def run(
+    command, desc=None, errdesc=None, custom_env=None, live: bool = default_command_live
+) -> str:
     if desc is not None:
         print(desc)
 
@@ -94,8 +98,8 @@ def run(command, desc=None, errdesc=None, custom_env=None, live: bool = default_
         "args": command,
         "shell": True,
         "env": os.environ if custom_env is None else custom_env,
-        "encoding": 'utf8',
-        "errors": 'ignore',
+        "encoding": "utf8",
+        "errors": "ignore",
     }
 
     if not live:
@@ -115,7 +119,7 @@ def run(command, desc=None, errdesc=None, custom_env=None, live: bool = default_
             error_bits.append(f"stderr: {result.stderr}")
         raise RuntimeError("\n".join(error_bits))
 
-    return (result.stdout or "")
+    return result.stdout or ""
 
 
 def is_installed(package):
@@ -140,8 +144,24 @@ def run_pip(command, desc=None, live=default_command_live):
     if args.skip_install:
         return
 
-    index_url_line = f' --index-url {index_url}' if index_url != '' else ''
-    return run(f'"{python}" -m pip {command} --prefer-binary{index_url_line}', desc=f"Installing {desc}", errdesc=f"Couldn't install {desc}", live=live)
+    index_url_line = f" --index-url {index_url}" if index_url != "" else ""
+    return run(
+        f'"{python}" -m pip {command} --prefer-binary{index_url_line}',
+        desc=f"Installing {desc}",
+        errdesc=f"Couldn't install {desc}",
+        live=live,
+    )
+
+
+def run_pip_uninstall(package: str, desc: str = None):
+    if args.skip_install:
+        return
+
+    return run(
+        f'"{python}" -m pip uninstall {package}',
+        desc=f"Uninstalling {desc}",
+        errdesc=f"Couldn't uninstall {desc}",
+    )
 
 
 def check_run_python(code: str) -> bool:
@@ -150,14 +170,39 @@ def check_run_python(code: str) -> bool:
 
 
 def git_fix_workspace(dir, name):
-    run(f'"{git}" -C "{dir}" fetch --refetch --no-auto-gc', f"Fetching all contents for {name}", f"Couldn't fetch {name}", live=True)
-    run(f'"{git}" -C "{dir}" gc --aggressive --prune=now', f"Pruning {name}", f"Couldn't prune {name}", live=True)
+    run(
+        f'"{git}" -C "{dir}" fetch --refetch --no-auto-gc',
+        f"Fetching all contents for {name}",
+        f"Couldn't fetch {name}",
+        live=True,
+    )
+    run(
+        f'"{git}" -C "{dir}" gc --aggressive --prune=now',
+        f"Pruning {name}",
+        f"Couldn't prune {name}",
+        live=True,
+    )
     return
 
 
-def run_git(dir, name, command, desc=None, errdesc=None, custom_env=None, live: bool = default_command_live, autofix=True):
+def run_git(
+    dir,
+    name,
+    command,
+    desc=None,
+    errdesc=None,
+    custom_env=None,
+    live: bool = default_command_live,
+    autofix=True,
+):
     try:
-        return run(f'"{git}" -C "{dir}" {command}', desc=desc, errdesc=errdesc, custom_env=custom_env, live=live)
+        return run(
+            f'"{git}" -C "{dir}" {command}',
+            desc=desc,
+            errdesc=errdesc,
+            custom_env=custom_env,
+            live=live,
+        )
     except RuntimeError:
         if not autofix:
             raise
@@ -165,7 +210,13 @@ def run_git(dir, name, command, desc=None, errdesc=None, custom_env=None, live: 
     print(f"{errdesc}, attempting autofix...")
     git_fix_workspace(dir, name)
 
-    return run(f'"{git}" -C "{dir}" {command}', desc=desc, errdesc=errdesc, custom_env=custom_env, live=live)
+    return run(
+        f'"{git}" -C "{dir}" {command}',
+        desc=desc,
+        errdesc=errdesc,
+        custom_env=custom_env,
+        live=live,
+    )
 
 
 def git_clone(url, dir, name, commithash=None):
@@ -175,16 +226,54 @@ def git_clone(url, dir, name, commithash=None):
         if commithash is None:
             return
 
-        current_hash = run_git(dir, name, 'rev-parse HEAD', None, f"Couldn't determine {name}'s hash: {commithash}", live=False).strip()
+        current_hash = run_git(
+            dir,
+            name,
+            "rev-parse HEAD",
+            None,
+            f"Couldn't determine {name}'s hash: {commithash}",
+            live=False,
+        ).strip()
         if current_hash == commithash:
             return
 
-        if run_git(dir, name, 'config --get remote.origin.url', None, f"Couldn't determine {name}'s origin URL", live=False).strip() != url:
-            run_git(dir, name, f'remote set-url origin "{url}"', None, f"Failed to set {name}'s origin URL", live=False)
+        if (
+            run_git(
+                dir,
+                name,
+                "config --get remote.origin.url",
+                None,
+                f"Couldn't determine {name}'s origin URL",
+                live=False,
+            ).strip()
+            != url
+        ):
+            run_git(
+                dir,
+                name,
+                f'remote set-url origin "{url}"',
+                None,
+                f"Failed to set {name}'s origin URL",
+                live=False,
+            )
 
-        run_git(dir, name, 'fetch', f"Fetching updates for {name}...", f"Couldn't fetch {name}", autofix=False)
+        run_git(
+            dir,
+            name,
+            "fetch",
+            f"Fetching updates for {name}...",
+            f"Couldn't fetch {name}",
+            autofix=False,
+        )
 
-        run_git(dir, name, f'checkout {commithash}', f"Checking out commit for {name} with hash: {commithash}...", f"Couldn't checkout commit {commithash} for {name}", live=True)
+        run_git(
+            dir,
+            name,
+            f"checkout {commithash}",
+            f"Checking out commit for {name} with hash: {commithash}...",
+            f"Couldn't checkout commit {commithash} for {name}",
+            live=True,
+        )
 
         return
 
@@ -195,29 +284,42 @@ def git_clone(url, dir, name, commithash=None):
         raise
 
     if commithash is not None:
-        run(f'"{git}" -C "{dir}" checkout {commithash}', None, "Couldn't checkout {name}'s hash: {commithash}")
+        run(
+            f'"{git}" -C "{dir}" checkout {commithash}',
+            None,
+            "Couldn't checkout {name}'s hash: {commithash}",
+        )
 
 
 def git_pull_recursive(dir):
     for subdir, _, _ in os.walk(dir):
-        if os.path.exists(os.path.join(subdir, '.git')):
+        if os.path.exists(os.path.join(subdir, ".git")):
             try:
-                output = subprocess.check_output([git, '-C', subdir, 'pull', '--autostash'])
-                print(f"Pulled changes for repository in '{subdir}':\n{output.decode('utf-8').strip()}\n")
+                output = subprocess.check_output(
+                    [git, "-C", subdir, "pull", "--autostash"]
+                )
+                print(
+                    f"Pulled changes for repository in '{subdir}':\n{output.decode('utf-8').strip()}\n"
+                )
             except subprocess.CalledProcessError as e:
-                print(f"Couldn't perform 'git pull' on repository in '{subdir}':\n{e.output.decode('utf-8').strip()}\n")
+                print(
+                    f"Couldn't perform 'git pull' on repository in '{subdir}':\n{e.output.decode('utf-8').strip()}\n"
+                )
 
 
 def version_check(commit):
     try:
         import requests
-        commits = requests.get('https://api.github.com/repos/AUTOMATIC1111/stable-diffusion-webui/branches/master').json()
-        if commit != "<none>" and commits['commit']['sha'] != commit:
+
+        commits = requests.get(
+            "https://api.github.com/repos/lshqqytiger/stable-diffusion-webui-directml/branches/master"
+        ).json()
+        if commit != "<none>" and commits["commit"]["sha"] != commit:
             print("--------------------------------------------------------")
             print("| You are not up to date with the most recent release. |")
             print("| Consider running `git pull` to update.               |")
             print("--------------------------------------------------------")
-        elif commits['commit']['sha'] == commit:
+        elif commits["commit"]["sha"] == commit:
             print("You are up to date with the most recent release.")
         else:
             print("Not a git clone, can't perform version check.")
@@ -234,7 +336,11 @@ def run_extension_installer(extension_dir):
         env = os.environ.copy()
         env['PYTHONPATH'] = f"{script_path}{os.pathsep}{env.get('PYTHONPATH', '')}"
 
-        stdout = run(f'"{python}" "{path_installer}"', errdesc=f"Error running install.py for extension {extension_dir}", custom_env=env).strip()
+        stdout = run(
+            f'"{python}" "{path_installer}"',
+            errdesc=f"Error running install.py for extension {extension_dir}",
+            custom_env=env,
+        ).strip()
         if stdout:
             print(stdout)
     except Exception as e:
@@ -253,10 +359,15 @@ def list_extensions(settings_file):
         errors.report(f'\nCould not load settings\nThe config file "{settings_file}" is likely corrupted\nIt has been moved to the "tmp/config.json"\nReverting config to default\n\n''', exc_info=True)
         os.replace(settings_file, os.path.join(script_path, "tmp", "config.json"))
 
-    disabled_extensions = set(settings.get('disabled_extensions', []))
-    disable_all_extensions = settings.get('disable_all_extensions', 'none')
+    disabled_extensions = set(settings.get("disabled_extensions", []))
+    disable_all_extensions = settings.get("disable_all_extensions", "none")
 
-    if disable_all_extensions != 'none' or args.disable_extra_extensions or args.disable_all_extensions or not os.path.isdir(extensions_dir):
+    if (
+        disable_all_extensions != "none"
+        or args.disable_extra_extensions
+        or args.disable_all_extensions
+        or not os.path.isdir(extensions_dir)
+    ):
         return []
 
     return [x for x in os.listdir(extensions_dir) if x not in disabled_extensions]
@@ -309,17 +420,41 @@ def requirements_met(requirements_file):
             except Exception:
                 return False
 
-            if packaging.version.parse(version_required) != packaging.version.parse(version_installed):
+            if packaging.version.parse(version_required) != packaging.version.parse(
+                version_installed
+            ):
                 return False
 
     return True
 
 
 def prepare_environment():
-    torch_index_url = os.environ.get('TORCH_INDEX_URL', "https://download.pytorch.org/whl/cu121")
-    torch_command = os.environ.get('TORCH_COMMAND', f"pip install torch==2.1.2 torchvision==0.16.2 --extra-index-url {torch_index_url}")
-    if args.use_ipex:
-        if platform.system() == "Windows":
+    from modules import rocm
+
+    system = platform.system()
+    nvidia_driver_found = False
+    backend = "cuda"
+    torch_command = "pip install torch==2.3.1 torchvision --extra-index-url https://download.pytorch.org/whl/cu121"
+
+    if args.use_cpu_torch:
+        backend = "cpu"
+        torch_command = os.environ.get(
+            "TORCH_COMMAND",
+            "pip install torch==2.3.1 torchvision",
+        )
+    elif args.use_directml:
+        backend = "directml"
+        torch_command = os.environ.get(
+            "TORCH_COMMAND",
+            "pip install torch==2.4.1 torchvision torch-directml",
+        )
+        args.skip_python_version_check = True
+    elif args.use_zluda:
+        print('WARNING: ZLUDA works best with SD.Next. Please consider migrating to SD.Next.')
+        backend = "cuda"
+    elif args.use_ipex:
+        backend = "ipex"
+        if system == "Windows":
             # The "Nuullll/intel-extension-for-pytorch" wheels were built from IPEX source for Intel Arc GPU: https://github.com/intel/intel-extension-for-pytorch/tree/xpu-main
             # This is NOT an Intel official release so please use it at your own risk!!
             # See https://github.com/Nuullll/intel-extension-for-pytorch/releases/tag/v2.0.110%2Bxpu-master%2Bdll-bundle for details.
@@ -338,6 +473,33 @@ def prepare_environment():
             # See https://intel.github.io/intel-extension-for-pytorch/index.html#installation for details.
             torch_index_url = os.environ.get('TORCH_INDEX_URL', "https://pytorch-extension.intel.com/release-whl/stable/xpu/us/")
             torch_command = os.environ.get('TORCH_COMMAND', f"pip install torch==2.0.0a0 intel-extension-for-pytorch==2.0.110+gitba7f6c1 --extra-index-url {torch_index_url}")
+    else:
+        nvidia_driver_found = shutil.which("nvidia-smi") is not None
+        if nvidia_driver_found:
+            print("NVIDIA driver was found.")
+            backend = "cuda"
+            torch_index_url = os.environ.get(
+                "TORCH_INDEX_URL", "https://download.pytorch.org/whl/cu121"
+            )
+            torch_command = os.environ.get(
+                "TORCH_COMMAND",
+                f"pip install torch==2.3.1 torchvision --extra-index-url {torch_index_url}",
+            )
+        else:
+            if rocm.is_installed:
+                if system == "Windows": # ZLUDA
+                    args.use_zluda = True
+                    backend = "cuda"
+                else:
+                    backend = "rocm"
+                    torch_index_url = os.environ.get(
+                        "TORCH_INDEX_URL", "https://download.pytorch.org/whl/rocm6.0"
+                    )
+                    torch_command = os.environ.get(
+                        "TORCH_COMMAND",
+                        f"pip install torch==2.3.1 torchvision --index-url {torch_index_url}",
+                    )
+
     requirements_file = os.environ.get('REQS_FILE', "requirements_versions.txt")
     requirements_file_for_npu = os.environ.get('REQS_FILE_FOR_NPU', "requirements_npu.txt")
 
@@ -360,7 +522,7 @@ def prepare_environment():
     try:
         # the existence of this file is a signal to webui.sh/bat that webui needs to be restarted when it stops execution
         os.remove(os.path.join(script_path, "tmp", "restart"))
-        os.environ.setdefault('SD_WEBUI_RESTARTING', '1')
+        os.environ.setdefault("SD_WEBUI_RESTARTING", "1")
     except OSError:
         pass
 
@@ -377,18 +539,84 @@ def prepare_environment():
     print(f"Version: {tag}")
     print(f"Commit hash: {commit}")
 
+    if args.use_zluda or backend == "rocm":
+        device = None
+        try:
+            amd_gpus = rocm.get_agents()
+            if len(amd_gpus) == 0:
+                print('ROCm: no agent was found')
+            else:
+                print(f'ROCm: agents={[gpu.name for gpu in amd_gpus]}')
+                if args.device_id is None:
+                    index = 0
+                    for idx, gpu in enumerate(amd_gpus):
+                        index = idx
+                        if not gpu.is_apu:
+                            # although apu was found, there can be a dedicated card. do not break loop.
+                            # if no dedicated card was found, apu will be used.
+                            break
+                    os.environ.setdefault('HIP_VISIBLE_DEVICES', str(index))
+                    device = amd_gpus[index]
+                else:
+                    device_id = int(args.device_id)
+                    if device_id < len(amd_gpus):
+                        device = amd_gpus[device_id]
+        except Exception as e:
+            print(f'ROCm agent enumerator failed: {e}')
+
+        msg = f'ROCm: version={rocm.version}'
+        if device is not None:
+            msg += f', using agent {device.name}'
+        print(msg)
+
+        if system == "Windows":
+            if args.device_id is not None:
+                if os.environ.get('HIP_VISIBLE_DEVICES', None) is not None:
+                    print('Setting HIP_VISIBLE_DEVICES and --device-id at the same time may be mistake.')
+                os.environ['HIP_VISIBLE_DEVICES'] = args.device_id
+                del args.device_id
+
+            print("ZLUDA support: experimental")
+            error = None
+            from modules import zluda_installer
+            zluda_installer.set_default_agent(device)
+            try:
+                zluda_path = zluda_installer.get_path()
+                zluda_installer.install(zluda_path)
+                zluda_installer.make_copy(zluda_path)
+            except Exception as e:
+                error = e
+                print(f'Failed to install ZLUDA: {e}')
+            if error is None:
+                try:
+                    zluda_installer.load(zluda_path)
+                    torch_command = os.environ.get('TORCH_COMMAND', f'pip install torch=={zluda_installer.get_default_torch_version(device)} torchvision --index-url https://download.pytorch.org/whl/cu118')
+                    print(f'Using ZLUDA in {zluda_path}')
+                except Exception as e:
+                    error = e
+                    print(f'Failed to load ZLUDA: {e}')
+            if error is not None:
+                print('Using CPU-only torch')
+                torch_command = os.environ.get('TORCH_COMMAND', 'pip install torch torchvision')
+
     if args.reinstall_torch or not is_installed("torch") or not is_installed("torchvision"):
         run(f'"{python}" -m {torch_command}', "Installing torch and torchvision", "Couldn't install torch", live=True)
         startup_timer.record("install torch")
 
-    if args.use_ipex:
+    if backend == "rocm":
+        if rocm.is_wsl:
+            rocm.load_hsa_runtime()
+        rocm.set_blaslt_enabled(False)
+
+    if args.skip_torch_cuda_test:
+        print("WARNING: you should not skip torch test unless you want CPU to work.")
+    if args.use_ipex or args.use_directml or args.use_zluda or args.use_cpu_torch:
         args.skip_torch_cuda_test = True
     if not args.skip_torch_cuda_test and not check_run_python("import torch; assert torch.cuda.is_available()"):
         raise RuntimeError(
             'Torch is not able to use GPU; '
             'add --skip-torch-cuda-test to COMMANDLINE_ARGS variable to disable this check'
         )
-    startup_timer.record("torch GPU test")
 
     if not is_installed("clip"):
         run_pip(f"install {clip_package}", "clip")
@@ -420,7 +648,7 @@ def prepare_environment():
         requirements_file = os.path.join(script_path, requirements_file)
 
     if not requirements_met(requirements_file):
-        run_pip(f"install -r \"{requirements_file}\"", "requirements")
+        run_pip(f'install -r "{requirements_file}"', "requirements")
         startup_timer.record("install requirements")
 
     if not os.path.isfile(requirements_file_for_npu):
@@ -429,6 +657,30 @@ def prepare_environment():
     if "torch_npu" in torch_command and not requirements_met(requirements_file_for_npu):
         run_pip(f"install -r \"{requirements_file_for_npu}\"", "requirements_for_npu")
         startup_timer.record("install requirements_for_npu")
+
+    if args.skip_ort:
+        print("Skipping onnxruntime installation.")
+    else:
+        if backend == "cuda":
+            if not is_installed("onnxruntime-gpu"):
+                run_pip("install onnxruntime-gpu", "onnxruntime-gpu")
+        elif backend == "rocm":
+            print("ROCM")
+            print("ROCM")
+            print("ROCM")
+            print("ROCM")
+            print("ROCM")
+            if not is_installed("onnxruntime-training"):
+                command = subprocess.run(next(iter(glob.glob("/opt/rocm*/bin/hipconfig")), "hipconfig") + ' --version', shell=True, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                rocm_ver = command.stdout.decode(encoding="utf8", errors="ignore").split('.')
+                ort_version = os.environ.get('ONNXRUNTIME_VERSION', None)
+                run_pip(f"install --pre onnxruntime-training{'' if ort_version is None else ('==' + ort_version)} --index-url https://pypi.lsh.sh/{rocm_ver[0]}{rocm_ver[1]} --extra-index-url https://pypi.org/simple", "onnxruntime-training")
+        elif backend == "directml":
+            if not is_installed("onnxruntime-directml"):
+                run_pip("install onnxruntime-directml", "onnxruntime-directml")
+        else:
+            if not is_installed("onnxruntime"):
+                run_pip("install onnxruntime", "onnxruntime")
 
     if not args.skip_install:
         run_extensions_installers(settings_file=args.ui_settings_file)
@@ -445,6 +697,8 @@ def prepare_environment():
         print("Exiting because of --exit argument")
         exit(0)
 
+    from modules import devices
+    devices.backend = backend
 
 def configure_for_tests():
     if "--api" not in sys.argv:
@@ -452,18 +706,17 @@ def configure_for_tests():
     if "--ckpt" not in sys.argv:
         sys.argv.append("--ckpt")
         sys.argv.append(os.path.join(script_path, "test/test_files/empty.pt"))
-    if "--skip-torch-cuda-test" not in sys.argv:
-        sys.argv.append("--skip-torch-cuda-test")
     if "--disable-nan-check" not in sys.argv:
         sys.argv.append("--disable-nan-check")
 
-    os.environ['COMMANDLINE_ARGS'] = ""
+    os.environ["COMMANDLINE_ARGS"] = ""
 
 
 def start():
     print(f"Launching {'API server' if '--nowebui' in sys.argv else 'Web UI'} with arguments: {shlex.join(sys.argv[1:])}")
     import webui
-    if '--nowebui' in sys.argv:
+
+    if "--nowebui" in sys.argv:
         webui.api_only()
     else:
         webui.webui()
@@ -480,3 +733,36 @@ def dump_sysinfo():
         file.write(text)
 
     return filename
+
+
+def find_zluda():
+    zluda_path = os.environ.get('ZLUDA', None)
+    if zluda_path is None:
+        paths = os.environ.get('PATH', '').split(';')
+        for path in paths:
+            if os.path.exists(os.path.join(path, 'zluda_redirect.dll')):
+                zluda_path = path
+                break
+    return zluda_path
+
+
+def patch_zluda():
+    zluda_path = find_zluda()
+    if zluda_path is None:
+        print('Failed to automatically patch torch with ZLUDA. Could not find ZLUDA from PATH.')
+        return
+    python_dir = os.path.dirname(shutil.which('python'))
+    if shutil.which('conda') is None:
+        python_dir = os.path.dirname(python_dir)
+    venv_dir = os.environ.get('VENV_DIR', python_dir)
+    dlls_to_patch = {
+        'cublas.dll': 'cublas64_11.dll',
+        #'cudnn.dll': 'cudnn64_8.dll',
+        'cusparse.dll': 'cusparse64_11.dll',
+        'nvrtc.dll': 'nvrtc64_112_0.dll',
+    }
+    try:
+        for k, v in dlls_to_patch.items():
+            shutil.copyfile(os.path.join(zluda_path, k), os.path.join(venv_dir, 'Lib', 'site-packages', 'torch', 'lib', v))
+    except Exception as e:
+        print(f'ZLUDA: failed to automatically patch torch: {e}')

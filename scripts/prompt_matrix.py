@@ -92,7 +92,9 @@ class Script(scripts.Script):
             p.prompt = all_prompts
         else:
             p.negative_prompt = all_prompts
+        print("### p.seed", p.seed)
         p.seed = [p.seed + (i if different_seeds else 0) for i in range(len(all_prompts))]
+        print("### after p.seed", p.seed)
         p.prompt_for_display = positive_prompt
         processed = process_images(p)
 

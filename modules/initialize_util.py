@@ -158,17 +158,28 @@ def dumpstacks():
 def configure_sigint_handler():
     # make the program just exit at ctrl+c without waiting for anything
 
+    import threading
     from modules import shared
 
     def sigint_handler(sig, frame):
         print(f'Interrupted with signal {sig} in {frame}')
 
-        if shared.opts.dump_stacks_on_signal:
-            dumpstacks()
+        # List all active threads
+        for thread in threading.enumerate():
+            print(f"X Thread name: {thread.name}, ID: {thread.ident}, Alive: {thread.is_alive()}")
 
+        # Get current thread count
+        print(f"X Active thread count: {threading.active_count()}")
+
+        if shared.opts.dump_stacks_on_signal:
+            print('X doing some dump exit...')
+            dumpstacks()
+        print("X CONFIG EXIT 1")
+        # sys.exit(0)
         os._exit(0)
 
     if not os.environ.get("COVERAGE_RUN"):
+        print("CONFIG EXIT 2")
         # Don't install the immediate-quit handler when running under coverage,
         # as then the coverage report won't be generated.
         signal.signal(signal.SIGINT, sigint_handler)

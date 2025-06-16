@@ -33,7 +33,7 @@ def get_font(fontsize: int):
         return ImageFont.truetype(roboto_ttf_file, fontsize)
 
 
-def image_grid(imgs, batch_size=1, rows=None):
+def image_grid(imgs, batch_size=1, rows=None, columnz=None):
     if rows is None:
         if opts.n_rows > 0:
             rows = opts.n_rows
@@ -48,8 +48,9 @@ def image_grid(imgs, batch_size=1, rows=None):
             rows = round(rows)
     if rows > len(imgs):
         rows = len(imgs)
-
     cols = math.ceil(len(imgs) / rows)
+    if columnz:
+        cols = columnz
 
     params = script_callbacks.ImageGridLoopParams(imgs, cols, rows)
     script_callbacks.image_grid_callback(params)
@@ -589,21 +590,23 @@ def save_image_with_geninfo(image, geninfo, filename, extension=None, existing_p
         image.save(filename, format=image_format, quality=opts.jpeg_quality, pnginfo=pnginfo_data)
 
     elif extension.lower() in (".jpg", ".jpeg", ".webp"):
-        if image.mode == 'RGBA':
-            image = image.convert("RGB")
-        elif image.mode == 'I;16':
-            image = image.point(lambda p: p * 0.0038910505836576).convert("RGB" if extension.lower() == ".webp" else "L")
+        print("--- Doing something with jpg for some reason ---")
+        return
+        # if image.mode == 'RGBA':
+        #     image = image.convert("RGB")
+        # elif image.mode == 'I;16':
+        #     image = image.point(lambda p: p * 0.0038910505836576).convert("RGB" if extension.lower() == ".webp" else "L")
 
-        image.save(filename, format=image_format, quality=opts.jpeg_quality, lossless=opts.webp_lossless)
+        # image.save(filename, format=image_format, quality=opts.jpeg_quality, lossless=opts.webp_lossless)
 
-        if opts.enable_pnginfo and geninfo is not None:
-            exif_bytes = piexif.dump({
-                "Exif": {
-                    piexif.ExifIFD.UserComment: piexif.helper.UserComment.dump(geninfo or "", encoding="unicode")
-                },
-            })
+        # if opts.enable_pnginfo and geninfo is not None:
+        #     exif_bytes = piexif.dump({
+        #         "Exif": {
+        #             piexif.ExifIFD.UserComment: piexif.helper.UserComment.dump(geninfo or "", encoding="unicode")
+        #         },
+        #     })
 
-            piexif.insert(exif_bytes, filename)
+        #     piexif.insert(exif_bytes, filename)
     elif extension.lower() == '.avif':
         if opts.enable_pnginfo and geninfo is not None:
             exif_bytes = piexif.dump({
@@ -701,7 +704,7 @@ def save_image(image, path, basename, seed=None, prompt=None, extension='png', i
     pnginfo = existing_info or {}
     if info is not None:
         pnginfo[pnginfo_section_name] = info
-
+    # print(".......fullfn:", fullfn)
     params = script_callbacks.ImageSaveParams(image, p, fullfn, pnginfo)
     script_callbacks.before_image_saved_callback(params)
 
@@ -751,6 +754,7 @@ def save_image(image, path, basename, seed=None, prompt=None, extension='png', i
             except Exception:
                 image = image.resize(resize_to)
         try:
+            print("--- Doing something with atomically_save_image ---")
             _atomically_save_image(image, fullfn_without_extension, ".jpg")
         except Exception as e:
             errors.display(e, "saving image as downscaled JPG")

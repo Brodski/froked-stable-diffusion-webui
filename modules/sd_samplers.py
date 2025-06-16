@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import functools
 import logging
-from modules import sd_samplers_kdiffusion, sd_samplers_timesteps, sd_samplers_lcm, shared, sd_samplers_common, sd_schedulers
+from modules import sd_samplers_kdiffusion, sd_samplers_timesteps, sd_samplers_diffusers, sd_samplers_lcm, shared, sd_samplers_common, sd_schedulers
 
 # imports for functions that previously were here and are used by other modules
 samples_to_image_grid = sd_samplers_common.samples_to_image_grid
 sample_to_image = sd_samplers_common.sample_to_image
 
-all_samplers = [
+all_samplers = sd_samplers_diffusers.samplers if shared.opts.onnx_enable else [
     *sd_samplers_kdiffusion.samplers_data_k_diffusion,
     *sd_samplers_timesteps.samplers_data_timesteps,
     *sd_samplers_lcm.samplers_data_lcm,
@@ -38,8 +38,11 @@ def create_sampler(name, model):
     if model.is_sdxl and config.options.get("no_sdxl", False):
         raise Exception(f"Sampler {config.name} is not supported for SDXL")
 
-    sampler = config.constructor(model)
-    sampler.config = config
+    if shared.opts.onnx_enable:
+        sampler = config.constructor.from_config(model.scheduler.config)
+    else:
+        sampler = config.constructor(model)
+        sampler.config = config
 
     return sampler
 

@@ -23,6 +23,16 @@ def has_mps() -> bool:
         return mac_specific.has_mps
 
 
+def has_zluda() -> bool:
+    if not torch.cuda.is_available():
+        return False
+    try:
+        device = torch.device("cuda")
+        return torch.cuda.get_device_name(device).endswith("[ZLUDA]")
+    except Exception:
+        return False
+
+
 def cuda_no_autocast(device_id=None) -> bool:
     if device_id is None:
         device_id = get_cuda_device_id()
@@ -43,8 +53,15 @@ def get_cuda_device_id():
 def get_cuda_device_string():
     if shared.cmd_opts.device_id is not None:
         return f"cuda:{shared.cmd_opts.device_id}"
-
     return "cuda"
+
+
+def get_dml_device_string():
+    from modules import shared
+
+    if shared.cmd_opts.device_id is not None:
+        return f"privateuseone:{shared.cmd_opts.device_id}"
+    return torch.dml.get_device_string(torch.dml.default_device())
 
 
 def get_optimal_device_name():
@@ -54,6 +71,11 @@ def get_optimal_device_name():
     if has_mps():
         return "mps"
 
+    from modules import shared
+    if shared.cmd_opts.use_directml:
+        import torch_directml
+        if torch_directml.is_available():
+            return get_dml_device_string()
     if has_xpu():
         return xpu_specific.get_xpu_device_string()
 
@@ -112,6 +134,7 @@ def enable_tf32():
 
 errors.run(enable_tf32, "Enabling TF32")
 
+backend = "cpu"
 cpu: torch.device = torch.device("cpu")
 fp8: bool = False
 # Force fp16 for all models in inference. No casting during inference.
@@ -222,8 +245,14 @@ def autocast(disable=False):
     if fp8 and dtype_inference == torch.float32:
         return manual_cast(dtype)
 
+    if device == cpu:
+        return contextlib.nullcontext()
+
     if dtype == torch.float32 or dtype_inference == torch.float32:
         return contextlib.nullcontext()
+
+    if device.type == "privateuseone":
+        return torch.dml.amp.autocast(dtype)
 
     if has_xpu() or has_mps() or cuda_no_autocast():
         return manual_cast(dtype)

@@ -1,8 +1,9 @@
 import json
 from contextlib import closing
+import math
 
 import modules.scripts
-from modules import processing, infotext_utils
+from modules import processing, infotext_utils, images, bski_split_helper
 from modules.infotext_utils import create_override_settings_dict, parse_generation_parameters
 from modules.shared import opts
 import modules.shared as shared
@@ -11,7 +12,7 @@ from PIL import Image
 import gradio as gr
 
 
-def txt2img_create_processing(id_task: str, request: gr.Request, prompt: str, negative_prompt: str, prompt_styles, n_iter: int, batch_size: int, cfg_scale: float, height: int, width: int, enable_hr: bool, denoising_strength: float, hr_scale: float, hr_upscaler: str, hr_second_pass_steps: int, hr_resize_x: int, hr_resize_y: int, hr_checkpoint_name: str, hr_sampler_name: str, hr_scheduler: str, hr_prompt: str, hr_negative_prompt, override_settings_texts, *args, force_enable_hr=False):
+def txt2img_create_processing(id_task: str, request: gr.Request, prompt: str, negative_prompt: str, prompt_styles, n_iter: int, batch_size: int, cfg_scale: float, height: int, width: int, enable_hr: bool, denoising_strength: float, hr_scale: float, hr_upscaler: str, hr_second_pass_steps: int, hr_resize_x: int, hr_resize_y: int, hr_checkpoint_name: str, hr_sampler_name: str, hr_scheduler: str, hr_prompt: str, hr_negative_prompt, override_settings_texts, multiple_run_count, is_cool_split, columnz_width, *args, force_enable_hr=False):
     override_settings = create_override_settings_dict(override_settings_texts)
 
     if force_enable_hr:
@@ -26,6 +27,7 @@ def txt2img_create_processing(id_task: str, request: gr.Request, prompt: str, ne
         negative_prompt=negative_prompt,
         batch_size=batch_size,
         n_iter=n_iter,
+        # n_iter=n_iter * multiple_run_count,
         cfg_scale=cfg_scale,
         width=width,
         height=height,
@@ -41,6 +43,9 @@ def txt2img_create_processing(id_task: str, request: gr.Request, prompt: str, ne
         hr_scheduler=None if hr_scheduler == 'Use same scheduler' else hr_scheduler,
         hr_prompt=hr_prompt,
         hr_negative_prompt=hr_negative_prompt,
+        multiple_run_count=multiple_run_count,
+        is_cool_split=is_cool_split,
+        columnz_width=columnz_width,
         override_settings=override_settings,
     )
 
@@ -99,16 +104,44 @@ def txt2img_upscale(id_task: str, request: gr.Request, gallery, gallery_index, g
     return new_gallery, json.dumps(geninfo), plaintext_to_html(processed.info), plaintext_to_html(processed.comments, classname="comments")
 
 
+def process_arrays(proc):
+    for attr_name in dir(proc):
+        attr_value = getattr(proc, attr_name)
+        
+        # Check if the value is a list
+        if isinstance(attr_value, list):
+            print(f"Property '{attr_name}' is an array: {attr_value}")
+            
+
+
 def txt2img(id_task: str, request: gr.Request, *args):
+    print("GOT SOMETHING FROM CLICK!")
+
+    multiple_run_count = args[21] 
+
     p = txt2img_create_processing(id_task, request, *args)
 
+    processed = None
     with closing(p):
+        #draw_xyz_grid
+        print("*****************************")
+        print("*****************************")
+        print(f"******     txt2img     *****")
+        print("*****************************")
+        print("*****************************")
+        print("p.multiple_run_count:", p.multiple_run_count)
+        print("p.seed", p.seed)
         processed = modules.scripts.scripts_txt2img.run(p, *p.script_args)
 
         if processed is None:
             processed = processing.process_images(p)
 
+        print("BOOM! len(processed.images): ", len(processed.images))
     shared.total_tqdm.clear()
+
+    if p.columnz_width > 0 and not hasattr(processed, "bski_splitter"):
+        # is_xyz_grid = False if p.n_iter <= len(processed.images) else True
+        processed = bski_split_helper.do_column_thing(processed, p.columnz_width, p.is_cool_split, p.outpath_grids, opts.grid_format)
 
     generation_info_js = processed.js()
     if opts.samples_log_stdout:

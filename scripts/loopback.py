@@ -101,8 +101,9 @@ class Script(scripts.Script):
                 if initial_seed is None:
                     initial_seed = processed.seed
                     initial_info = processed.info
-
+                print("@@ p.seed", p.seed)
                 p.seed = processed.seed + 1
+                print("@@ after p.seed", p.seed)
                 p.denoising_strength = calculate_denoising_strength(i + 1)
 
                 if state.skipped:

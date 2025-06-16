@@ -90,6 +90,7 @@ class KDiffusionSampler(sd_samplers_common.Sampler):
 
         scheduler = sd_schedulers.schedulers_map.get(scheduler_name)
 
+        self.model_wrap.sigmas.__str__() # synchronize DML device
         m_sigma_min, m_sigma_max = self.model_wrap.sigmas[0].item(), self.model_wrap.sigmas[-1].item()
         sigma_min, sigma_max = (0.1, 10) if opts.use_old_karras_scheduler_sigmas else (m_sigma_min, m_sigma_max)
 
@@ -172,6 +173,8 @@ class KDiffusionSampler(sd_samplers_common.Sampler):
             extra_params_kwargs['solver_type'] = 'heun'
 
         self.model_wrap_cfg.init_latent = x
+        if shared.cmd_opts.use_directml:
+            self.model_wrap_cfg.init_latent = self.model_wrap_cfg.init_latent.float()
         self.last_latent = x
         self.sampler_extra_args = {
             'cond': conditioning,
@@ -185,7 +188,7 @@ class KDiffusionSampler(sd_samplers_common.Sampler):
 
         self.add_infotext(p)
 
-        return samples
+        return samples.type(devices.dtype)
 
     def sample(self, p, x, conditioning, unconditional_conditioning, steps=None, image_conditioning=None):
         steps = steps or p.steps
