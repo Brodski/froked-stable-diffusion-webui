@@ -109,7 +109,7 @@ def create_ui():
 
                 with gr.TabItem("Customize pass flow", id="pass_flow"):
                     with gr.Tabs(elem_id="tabs_model_type"):
-                        with gr.TabItem("Stable Diffusion", id="sd"):
+                        with gr.TabItem("Stable Diffusion 69", id="sd"):
                             sd_config_path = os.path.join(sd_configs_path, "olive", "sd")
                             sd_submodels = os.listdir(sd_config_path)
                             sd_configs: Dict[str, Dict[str, Dict[str, Dict]]] = {}

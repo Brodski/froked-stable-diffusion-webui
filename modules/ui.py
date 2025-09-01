@@ -1723,8 +1723,7 @@ def create_ui():
 
         parameters_copypaste.connect_paste_params_buttons()
 
-        # gr.Markdown("Title edit 😎")
-        gr.HTML('<div> "Title edit 😎 </div> <input type="text" onkeyup="document.title=this.value" placeholder="Stable Diffusion" style="color: black; font-weight: bold;">')
+        gr.HTML('<div> Title edit 😎 </div> <input id="bskiTitle" type="text" onkeyup="document.title=this.value; bskiTitleHack()" placeholder="Stable Diffusion" style="color: black; font-weight: bold;">')
         with gr.Tabs(elem_id="tabs") as tabs:
             tab_order = {k: i for i, k in enumerate(opts.ui_tab_order)}
             sorted_interfaces = sorted(

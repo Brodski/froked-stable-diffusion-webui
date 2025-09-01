@@ -32,6 +32,7 @@ var optionsChangedCallbacks = [];
 var optionsAvailableCallbacks = [];
 var uiAfterUpdateTimeout = null;
 var uiCurrentTab = null;
+bskiTitleHack()
 
 /**
  * Register callback to be called at each UI update.
@@ -212,3 +213,22 @@ function uiElementInSight(el) {
 
     return isOnScreen;
 }
+
+
+function bskiTitleHack2() {
+    if (window.bskiGlobal?.isDone && window.bskiGlobal?.title) {
+        console.log("------ THE HACK ----- ")
+        console.log('Page is fully loaded');
+        document.title = window.bskiGlobal.title
+    }
+
+}
+function bskiTitleHack() {
+    console.log("THATS CRAZY")
+    let titlez = document.querySelector("#bskiTitle")?.value
+    window.bskiGlobal = {
+        title: titlez,
+        isDone: false
+    };
+}
+

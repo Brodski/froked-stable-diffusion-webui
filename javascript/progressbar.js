@@ -72,11 +72,14 @@ function randomId() {
 // starts sending progress requests to "/internal/progress" uri, creating progressbar above progressbarContainer element and
 // preview inside gallery element. Cleans up all created stuff when the task is over and calls atEnd.
 // calls onProgress every time there is a progress update
-function requestProgress(id_task, progressbarContainer, gallery, atEnd, onProgress, inactivityTimeout = 40) {
+function requestProgress(id_task, progressbarContainer, gallery, atEnd, onProgress, inactivityTimeout = 40, title_bski = "") {
     var dateStart = new Date();
     var wasEverActive = false;
     var parentProgressbar = progressbarContainer.parentNode;
     var wakeLock = null;
+    console.log("inactivityTimeout ", inactivityTimeout)
+    console.log("title_bski ", title_bski)
+    window.bskiGlobal.isDone = false;
 
     var requestWakeLock = async function() {
         if (!opts.prevent_screen_sleep_during_generation || wakeLock) return;
@@ -109,6 +112,7 @@ function requestProgress(id_task, progressbarContainer, gallery, atEnd, onProgre
     var livePreview = null;
 
     var removeProgressBar = function() {
+        //debugger
         releaseWakeLock();
         if (!divProgress) return;
 
@@ -116,6 +120,8 @@ function requestProgress(id_task, progressbarContainer, gallery, atEnd, onProgre
         parentProgressbar.removeChild(divProgress);
         if (gallery && livePreview) gallery.removeChild(livePreview);
         atEnd();
+        
+        window.bskiGlobal.isDone = true;
 
         divProgress = null;
     };
@@ -124,6 +130,7 @@ function requestProgress(id_task, progressbarContainer, gallery, atEnd, onProgre
         requestWakeLock();
         request("./internal/progress", {id_task: id_task, live_preview: false}, function(res) {
             if (res.completed) {
+                console.log("WTF 5")
                 removeProgressBar();
                 return;
             }
@@ -140,7 +147,7 @@ function requestProgress(id_task, progressbarContainer, gallery, atEnd, onProgre
             if (res.eta) {
                 progressText += " ETA: " + formatTime(res.eta);
             }
-
+            console.log("progressText====", progressText)
             setTitle(progressText);
 
             if (res.textinfo && res.textinfo.indexOf("\n") == -1) {
@@ -154,11 +161,21 @@ function requestProgress(id_task, progressbarContainer, gallery, atEnd, onProgre
             if (res.active) wasEverActive = true;
 
             if (!res.active && wasEverActive) {
+                console.log("WTF 1")
                 removeProgressBar();
                 return;
             }
 
             if (elapsedFromStart > inactivityTimeout && !res.queued && !res.active) {
+                console.log("inactivityTimeout", inactivityTimeout)
+                console.log("elapsedFromStart", elapsedFromStart)
+                console.log("res.queued", res.queued)
+                console.log("res.active", res.active)
+                console.log("WTF 2")
+                console.log("WTF 2")
+                console.log("WTF 2")
+                console.log("WTF 2")
+                console.log("WTF 2")
                 removeProgressBar();
                 return;
             }
@@ -171,12 +188,14 @@ function requestProgress(id_task, progressbarContainer, gallery, atEnd, onProgre
                 funProgress(id_task, res.id_live_preview);
             }, opts.live_preview_refresh_period || 500);
         }, function() {
+            console.log("WTF 3")
             removeProgressBar();
         });
     };
 
     var funLivePreview = function(id_task, id_live_preview) {
         request("./internal/progress", {id_task: id_task, id_live_preview: id_live_preview}, function(res) {
+            //debugger
             if (!divProgress) {
                 return;
             }
@@ -202,6 +221,7 @@ function requestProgress(id_task, progressbarContainer, gallery, atEnd, onProgre
                 funLivePreview(id_task, res.id_live_preview);
             }, opts.live_preview_refresh_period || 500);
         }, function() {
+            console.log("WTF 4")
             removeProgressBar();
         });
     };

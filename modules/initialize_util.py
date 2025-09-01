@@ -179,7 +179,7 @@ def configure_sigint_handler():
         os._exit(0)
 
     if not os.environ.get("COVERAGE_RUN"):
-        print("CONFIG EXIT 2")
+        print("X CONFIG EXIT 2")
         # Don't install the immediate-quit handler when running under coverage,
         # as then the coverage report won't be generated.
         signal.signal(signal.SIGINT, sigint_handler)
