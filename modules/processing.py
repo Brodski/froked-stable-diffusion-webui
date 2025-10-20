@@ -844,6 +844,7 @@ def process_images(p: StableDiffusionProcessing) -> Processed:
         sd_samplers.fix_p_invalid_sampler_and_scheduler(p)
 
         with profiling.Profiler():
+            print("Creating a image, my man")
             res = process_images_inner(p)
 
     finally:
@@ -862,6 +863,7 @@ def process_images(p: StableDiffusionProcessing) -> Processed:
 
 def process_images_inner(p: StableDiffusionProcessing) -> Processed:
     """this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
+    print("Creating a image (continued 2 lines after)")
 
     if isinstance(p.prompt, list):
         assert(len(p.prompt) > 0)
@@ -928,8 +930,11 @@ def process_images_inner(p: StableDiffusionProcessing) -> Processed:
 
         if state.job_count == -1:
             state.job_count = p.n_iter
-
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         for n in range(p.n_iter):
+            print("SEED PRE, p.seed:", p.seed)
+        for n in range(p.n_iter):
+            print("Using seed:", p.seed, "\n")
             p.iteration = n
 
             if state.skipped:
@@ -983,6 +988,7 @@ def process_images_inner(p: StableDiffusionProcessing) -> Processed:
                 shared.state.job = f"Batch {n+1} out of {p.n_iter}"
 
             sd_models.apply_alpha_schedule_override(p.sd_model, p)
+            print("bang 7")
 
             with devices.without_autocast() if devices.unet_needs_upcast else devices.autocast():
                 samples_ddim = p.sample(conditioning=p.c, unconditional_conditioning=p.uc, seeds=p.seeds, subseeds=p.subseeds, subseed_strength=p.subseed_strength, prompts=p.prompts)
@@ -1108,6 +1114,7 @@ def process_images_inner(p: StableDiffusionProcessing) -> Processed:
             del x_samples_ddim
 
             devices.torch_gc()
+            print("some image(s) generated")
 
         if not infotexts:
             infotexts.append(Processed(p, []).infotext(p, 0))
@@ -1116,7 +1123,8 @@ def process_images_inner(p: StableDiffusionProcessing) -> Processed:
 
         index_of_first_image = 0
         unwanted_grid_because_of_img_count = len(output_images) < 2 and opts.grid_only_if_multiple
-        if (opts.return_grid or opts.grid_save) and not p.do_not_save_grid and not unwanted_grid_because_of_img_count:
+        if (opts.return_grid or opts.grid_save) and not p.do_not_save_grid and not unwanted_grid_because_of_img_count and not p.columnz_width > 0:
+            print("1 DOING SOME GRID SHIT HERE!!!!!!!!!")
             grid = images.image_grid(output_images, p.batch_size)
 
             if opts.return_grid:
@@ -1197,6 +1205,10 @@ class StableDiffusionProcessingTxt2Img(StableDiffusionProcessing):
     hr_prompts: list = field(default=None, init=False)
     hr_negative_prompts: list = field(default=None, init=False)
     hr_extra_network_data: list = field(default=None, init=False)
+#HEREHEREHERE
+    multiple_run_count: int = 1
+
+    columnz_width: int = 0
 
     def __post_init__(self):
         super().__post_init__()

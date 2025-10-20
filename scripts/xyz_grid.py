@@ -11,7 +11,7 @@ import numpy as np
 import modules.scripts as scripts
 import gradio as gr
 
-from modules import images, sd_samplers, processing, sd_models, sd_vae, sd_schedulers, errors
+from modules import images, sd_samplers, processing, sd_models, sd_vae, sd_schedulers, errors, bski_split_helper
 from modules.processing import process_images, Processed, StableDiffusionProcessingTxt2Img
 from modules.shared import opts, state
 import modules.shared as shared
@@ -237,19 +237,20 @@ class AxisOptionTxt2Img(AxisOption):
 
 axis_options = [
     AxisOption("Nothing", str, do_nothing, format_value=format_nothing),
+    AxisOption("Prompt S/R", str, apply_prompt, format_value=format_value),
+    AxisOption("Prompt order", str_permutations, apply_order, format_value=format_value_join_list),
+    AxisOption("Size", str, apply_size),
+    AxisOption("Steps", int, apply_field("steps")),
     AxisOption("Seed", int, apply_field("seed")),
+    AxisOption("Checkpoint name", str, apply_checkpoint, format_value=format_remove_path, confirm=confirm_checkpoints, cost=1.0, choices=lambda: sorted(sd_models.checkpoints_list, key=str.casefold)),
     AxisOption("Var. seed", int, apply_field("subseed")),
     AxisOption("Var. strength", float, apply_field("subseed_strength")),
-    AxisOption("Steps", int, apply_field("steps")),
     AxisOptionTxt2Img("Hires steps", int, apply_field("hr_second_pass_steps")),
     AxisOption("CFG Scale", float, apply_field("cfg_scale")),
     AxisOptionImg2Img("Image CFG Scale", float, apply_field("image_cfg_scale")),
-    AxisOption("Prompt S/R", str, apply_prompt, format_value=format_value),
-    AxisOption("Prompt order", str_permutations, apply_order, format_value=format_value_join_list),
     AxisOptionTxt2Img("Sampler", str, apply_field("sampler_name"), format_value=format_value, confirm=confirm_samplers, choices=lambda: [x.name for x in sd_samplers.samplers if x.name not in opts.hide_samplers]),
     AxisOptionTxt2Img("Hires sampler", str, apply_field("hr_sampler_name"), confirm=confirm_samplers, choices=lambda: [x.name for x in sd_samplers.samplers_for_img2img if x.name not in opts.hide_samplers]),
     AxisOptionImg2Img("Sampler", str, apply_field("sampler_name"), format_value=format_value, confirm=confirm_samplers, choices=lambda: [x.name for x in sd_samplers.samplers_for_img2img if x.name not in opts.hide_samplers]),
-    AxisOption("Checkpoint name", str, apply_checkpoint, format_value=format_remove_path, confirm=confirm_checkpoints, cost=1.0, choices=lambda: sorted(sd_models.checkpoints_list, key=str.casefold)),
     AxisOption("Negative Guidance minimum sigma", float, apply_field("s_min_uncond")),
     AxisOption("Sigma Churn", float, apply_field("s_churn")),
     AxisOption("Sigma min", float, apply_field("s_tmin")),
@@ -281,7 +282,6 @@ axis_options = [
     AxisOption("Refiner switch at", float, apply_field('refiner_switch_at')),
     AxisOption("RNG source", str, apply_override("randn_source"), choices=lambda: ["GPU", "CPU", "NV"]),
     AxisOption("FP8 mode", str, apply_override("fp8_storage"), cost=0.9, choices=lambda: ["Disable", "Enable for SDXL", "Enable"]),
-    AxisOption("Size", str, apply_size),
 ]
 
 
@@ -294,34 +294,51 @@ def draw_xyz_grid(p, xs, ys, zs, x_labels, y_labels, z_labels, cell, draw_legend
 
     processed_result = None
 
-    state.job_count = list_size * p.n_iter
+    # state.job_count = list_size * p.n_iter
+    state.job_count = list_size * p.n_iter * p.multiple_run_count
 
-    def process_cell(x, y, z, ix, iy, iz):
+    def process_cell(x, y, z, ix, iy, iz, multi_cnt=1):
         nonlocal processed_result
+        nonlocal p
 
         def index(ix, iy, iz):
             return ix + iy * len(xs) + iz * len(xs) * len(ys)
 
-        state.job = f"{index(ix, iy, iz) + 1} out of {list_size}"
+        # state.job = f"{index(ix, iy, iz) + 1} out of {list_size}"
+
+        multi_msg = f"(process_cell) MULT: {multi_cnt} of {p.multiple_run_count} - " if p.multiple_run_count > 1 else ""
+        state.job = f"{multi_msg}{index(ix, iy, iz) + 1} out of {list_size}"
 
         processed: Processed = cell(x, y, z, ix, iy, iz)
 
+        # my thing
         if processed_result is None:
             # Use our first processed result object as a template container to hold our full results
             processed_result = copy(processed)
-            processed_result.images = [None] * list_size
-            processed_result.all_prompts = [None] * list_size
-            processed_result.all_seeds = [None] * list_size
-            processed_result.infotexts = [None] * list_size
+            processed_result.images = []
+            processed_result.all_prompts = []
+            processed_result.all_seeds = []
+            processed_result.infotexts = []
             processed_result.index_of_first_image = 1
 
         idx = index(ix, iy, iz)
-        if processed.images:
-            # Non-empty list indicates some degree of success.
-            processed_result.images[idx] = processed.images[0]
-            processed_result.all_prompts[idx] = processed.prompt
-            processed_result.all_seeds[idx] = processed.seed
-            processed_result.infotexts[idx] = processed.infotexts[0]
+
+        if p.columnz_width > 0:
+            print("=====", idx, "=====")
+            for i, img in enumerate(processed.images):
+                # [0] = the combination of [1-n] (vertical concat of mutiple images)
+                # if i == 0 and len(processed.images) > 1:
+                #     continue
+                print("    img:", i, img)
+                processed_result.images.append(img)
+                processed_result.all_prompts.append(processed.prompt)
+                processed_result.all_seeds.append(processed.seed)
+                processed_result.infotexts.append(processed.infotexts[0])
+        elif processed.images:
+            processed_result.images.append(processed.images[0])
+            processed_result.all_prompts.append(processed.prompt)
+            processed_result.all_seeds.append(processed.seed)
+            processed_result.infotexts.append(processed.infotexts[0])
         else:
             cell_mode = "P"
             cell_size = (processed_result.width, processed_result.height)
@@ -331,36 +348,49 @@ def draw_xyz_grid(p, xs, ys, zs, x_labels, y_labels, z_labels, cell, draw_legend
                 cell_size = processed_result.images[0].size
             processed_result.images[idx] = Image.new(cell_mode, cell_size)
 
-    if first_axes_processed == 'x':
-        for ix, x in enumerate(xs):
-            if second_axes_processed == 'y':
-                for iy, y in enumerate(ys):
-                    for iz, z in enumerate(zs):
-                        process_cell(x, y, z, ix, iy, iz)
-            else:
-                for iz, z in enumerate(zs):
+            
+    tricky_lazy_seed_counter = 0
+    for i_multi in range(p.multiple_run_count):
+        print()
+        print("####################################")
+        print("## Multi run:", (i_multi + 1), "of", p.multiple_run_count)
+        print()
+        print("tricky_lazy_seed_counter:", tricky_lazy_seed_counter)
+        print("tricky - p.seed before:", p.seed)
+        p.seed = p.seed + tricky_lazy_seed_counter if p.seed != -1 else p.seed # this is not a accurate counter, but it does increment
+        print("tricky - p.seed after:", p.seed)
+
+        if first_axes_processed == 'x':
+            for ix, x in enumerate(xs):
+                if second_axes_processed == 'y':
                     for iy, y in enumerate(ys):
-                        process_cell(x, y, z, ix, iy, iz)
-    elif first_axes_processed == 'y':
-        for iy, y in enumerate(ys):
-            if second_axes_processed == 'x':
-                for ix, x in enumerate(xs):
+                        for iz, z in enumerate(zs):
+                            process_cell(x, y, z, ix, iy, iz, i_multi)
+                else:
                     for iz, z in enumerate(zs):
-                        process_cell(x, y, z, ix, iy, iz)
-            else:
-                for iz, z in enumerate(zs):
+                        for iy, y in enumerate(ys):
+                            process_cell(x, y, z, ix, iy, iz, i_multi)
+        elif first_axes_processed == 'y':
+            for iy, y in enumerate(ys):
+                if second_axes_processed == 'x':
                     for ix, x in enumerate(xs):
-                        process_cell(x, y, z, ix, iy, iz)
-    elif first_axes_processed == 'z':
-        for iz, z in enumerate(zs):
-            if second_axes_processed == 'x':
-                for ix, x in enumerate(xs):
+                        for iz, z in enumerate(zs):
+                            process_cell(x, y, z, ix, iy, iz, i_multi)
+                else:
+                    for iz, z in enumerate(zs):
+                        for ix, x in enumerate(xs):
+                            process_cell(x, y, z, ix, iy, iz, i_multi)
+        elif first_axes_processed == 'z':
+            for iz, z in enumerate(zs):
+                if second_axes_processed == 'x':
+                    for ix, x in enumerate(xs):
+                        for iy, y in enumerate(ys):
+                            process_cell(x, y, z, ix, iy, iz, i_multi)
+                else:
                     for iy, y in enumerate(ys):
-                        process_cell(x, y, z, ix, iy, iz)
-            else:
-                for iy, y in enumerate(ys):
-                    for ix, x in enumerate(xs):
-                        process_cell(x, y, z, ix, iy, iz)
+                        for ix, x in enumerate(xs):
+                            process_cell(x, y, z, ix, iy, iz, i_multi)
+        tricky_lazy_seed_counter += 1
 
     if not processed_result:
         # Should never happen, I've only seen it on one of four open tabs and it needed to refresh.
@@ -370,9 +400,24 @@ def draw_xyz_grid(p, xs, ys, zs, x_labels, y_labels, z_labels, cell, draw_legend
         print("Unexpected error: draw_xyz_grid failed to return even a single processed image")
         return Processed(p, [])
 
-    if draw_grid:
-        z_count = len(zs)
 
+    print()
+    print("-------------------------------------------")
+    print("----    Finished generating images     ----")
+    print("-------------------------------------------")
+    print("processed_result: ", processed_result)
+    print("p.columnz_width: ", p.columnz_width)
+    print("len(processed_result.images)", len(processed_result.images))
+
+
+    z_count = len(zs)
+
+    if p.columnz_width > 0:
+        print("XYZ - column_width>0, doing bski")
+        processed_result = bski_split_helper.do_column_thing(processed_result, p.columnz_width, p.outpath_grids, opts.grid_format)
+    # elif draw_grid:
+    else:
+        print("Grid Rows is less than 1. Skipping 'Use Grid Row Count for Prompt X/Y/Z grid'")
         for i in range(z_count):
             start_index = (i * len(xs) * len(ys)) + i
             end_index = start_index + len(xs) * len(ys)
@@ -385,15 +430,20 @@ def draw_xyz_grid(p, xs, ys, zs, x_labels, y_labels, z_labels, cell, draw_legend
             processed_result.all_seeds.insert(i, processed_result.all_seeds[start_index])
             processed_result.infotexts.insert(i, processed_result.infotexts[start_index])
 
-        z_grid = images.image_grid(processed_result.images[:z_count], rows=1)
-        z_sub_grid_max_w, z_sub_grid_max_h = map(max, zip(*(img.size for img in processed_result.images[:z_count])))
-        if draw_legend:
-            z_grid = images.draw_grid_annotations(z_grid, z_sub_grid_max_w, z_sub_grid_max_h, title_texts, [[images.GridAnnotation()]])
-        processed_result.images.insert(0, z_grid)
-        # TODO: Deeper aspects of the program rely on grid info being misaligned between metadata arrays, which is not ideal.
-        # processed_result.all_prompts.insert(0, processed_result.all_prompts[0])
-        # processed_result.all_seeds.insert(0, processed_result.all_seeds[0])
-        processed_result.infotexts.insert(0, processed_result.infotexts[0])
+    z_grid = images.image_grid(processed_result.images[:z_count], rows=1)
+    z_sub_grid_max_w, z_sub_grid_max_h = map(max, zip(*(img.size for img in processed_result.images[:z_count])))
+    
+    # if draw_legend:
+    if draw_legend and p.columnz_width < 1:
+        z_grid = images.draw_grid_annotations(z_grid, z_sub_grid_max_w, z_sub_grid_max_h, title_texts, [[images.GridAnnotation()]])
+
+    # z_grid is a duplicate for w/e reason
+    if p.columnz_width > 1:  
+        return processed_result
+    processed_result.images.insert(0, z_grid) #IGNORE IF COLMNZ > 1
+    processed_result.infotexts.insert(0, processed_result.infotexts[0])
+
+    print("len(processed_result.images)2", len(processed_result.images))
 
     return processed_result
 
@@ -430,7 +480,7 @@ class Script(scripts.Script):
                     fill_x_button = ToolButton(value=fill_values_symbol, elem_id="xyz_grid_fill_x_tool_button", visible=False)
 
                 with gr.Row():
-                    y_type = gr.Dropdown(label="Y type", choices=[x.label for x in self.current_axis_options], value=self.current_axis_options[0].label, type="index", elem_id=self.elem_id("y_type"))
+                    y_type = gr.Dropdown(label="Y type", choices=[x.label for x in self.current_axis_options], value=self.current_axis_options[1].label, type="index", elem_id=self.elem_id("y_type"))
                     y_values = gr.Textbox(label="Y values", lines=1, elem_id=self.elem_id("y_values"))
                     y_values_dropdown = gr.Dropdown(label="Y values", visible=False, multiselect=True, interactive=True)
                     fill_y_button = ToolButton(value=fill_values_symbol, elem_id="xyz_grid_fill_y_tool_button", visible=False)
@@ -443,7 +493,7 @@ class Script(scripts.Script):
 
         with gr.Row(variant="compact", elem_id="axis_options"):
             with gr.Column():
-                no_fixed_seeds = gr.Checkbox(label='Keep -1 for seeds', value=False, elem_id=self.elem_id("no_fixed_seeds"))
+                no_fixed_seeds = gr.Checkbox(label='Keep -1 for seeds', value=True, elem_id=self.elem_id("no_fixed_seeds"))
                 with gr.Row():
                     vary_seeds_x = gr.Checkbox(label='Vary seeds for X', value=False, min_width=80, elem_id=self.elem_id("vary_seeds_x"), tooltip="Use different seeds for images along X axis.")
                     vary_seeds_y = gr.Checkbox(label='Vary seeds for Y', value=False, min_width=80, elem_id=self.elem_id("vary_seeds_y"), tooltip="Use different seeds for images along Y axis.")
@@ -539,6 +589,7 @@ class Script(scripts.Script):
 
         return [x_type, x_values, x_values_dropdown, y_type, y_values, y_values_dropdown, z_type, z_values, z_values_dropdown, draw_legend, include_lone_images, include_sub_grids, no_fixed_seeds, vary_seeds_x, vary_seeds_y, vary_seeds_z, margin_size, csv_mode, draw_grid]
 
+    # called in def txt2img() @ txt2img.py
     def run(self, p, x_type, x_values, x_values_dropdown, y_type, y_values, y_values_dropdown, z_type, z_values, z_values_dropdown, draw_legend, include_lone_images, include_sub_grids, no_fixed_seeds, vary_seeds_x, vary_seeds_y, vary_seeds_z, margin_size, csv_mode, draw_grid):
         x_type, y_type, z_type = x_type or 0, y_type or 0, z_type or 0  # if axle type is None set to 0
 
@@ -721,6 +772,7 @@ class Script(scripts.Script):
             xdim = len(xs) if vary_seeds_x else 1
             ydim = len(ys) if vary_seeds_y else 1
 
+            print('BEFORE pc.seed:', pc.seed)
             if vary_seeds_x:
                 pc.seed += ix
             if vary_seeds_y:
@@ -798,10 +850,11 @@ class Script(scripts.Script):
             # Set the grid infotexts to the real ones with extra_generation_params (1 main grid + z_count sub-grids)
             processed.infotexts[:1 + z_count] = grid_infotext[:1 + z_count]
 
-        if not include_lone_images:
+        if not include_lone_images and p.columnz_width < 1:
             # Don't need sub-images anymore, drop from list:
             processed.images = processed.images[:z_count + 1] if draw_grid else []
 
+        print("HERE SAVING GRID THINGY!")
         if draw_grid and opts.grid_save:
             # Auto-save main and sub-grids:
             grid_count = z_count + 1 if z_count > 1 else 1

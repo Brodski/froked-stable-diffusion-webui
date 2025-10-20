@@ -58,3 +58,6 @@ def initialize():
     shared.mem_mon = memmon.MemUsageMonitor("MemMon", devices.device, shared.opts)
     shared.mem_mon.start()
 
+    print(f"zNumber of GPUs available: {torch.cuda.device_count()}")
+    if torch.cuda.is_available():
+        print(f"\nCurrent GPU ID: {torch.cuda.current_device()}")

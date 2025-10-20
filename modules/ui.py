@@ -261,6 +261,9 @@ def create_ui():
 
     parameters_copypaste.reset()
 
+    with gr.Blocks(analytics_enabled=False) as custom_shit:
+        gr.Markdown("# Title")
+
     settings = ui_settings.UiSettings()
     settings.register_settings()
 
@@ -290,8 +293,8 @@ def create_ui():
                     elif category == "dimensions":
                         with FormRow():
                             with gr.Column(elem_id="txt2img_column_size", scale=4):
-                                width = gr.Slider(minimum=64, maximum=2048, step=8, label="Width", value=512, elem_id="txt2img_width")
-                                height = gr.Slider(minimum=64, maximum=2048, step=8, label="Height", value=512, elem_id="txt2img_height")
+                                width = gr.Slider(minimum=64, maximum=3052, step=8, label="Width - 512 - 768 - 1024", value=768, elem_id="txt2img_width")
+                                height = gr.Slider(minimum=64, maximum=3052, step=8, label="Height - 512 - 1024|1344|1536 - 2048", value=1536, elem_id="txt2img_height")
 
                             with gr.Column(elem_id="txt2img_dimensions_row", scale=1, elem_classes="dimensions-tools"):
                                 res_switch_btn = ToolButton(value=switch_values_symbol, elem_id="txt2img_res_switch_btn", tooltip="Switch width/height")
@@ -299,7 +302,11 @@ def create_ui():
                             if opts.dimensions_and_batch_together:
                                 with gr.Column(elem_id="txt2img_column_batch"):
                                     batch_count = gr.Slider(minimum=1, step=1, label='Batch count', value=1, elem_id="txt2img_batch_count")
-                                    batch_size = gr.Slider(minimum=1, maximum=8, step=1, label='Batch size', value=1, elem_id="txt2img_batch_size")
+                                    batch_size = gr.Slider(minimum=1, maximum=8, step=1, label='Batch size1', value=1, elem_id="txt2img_batch_size")
+                                    multiple_run_count = gr.Slider(minimum=1, maximum=20, step=1, label="Multipy runs (bski)", value=1, elem_id="multiple_run_count",)
+
+                            with gr.Column(elem_id="txt2img_column_size_poop"):
+                                columnz_width = gr.Slider(label="columnz_width ", minimum=0, maximum=10, value=0, step=1, elem_id="columnz_width") #elem_id starting will "txt2img_res" will for min=1 and max=100, i have no idea why the dumbass devs would do that
 
                     elif category == "cfg":
                         with gr.Row():
@@ -347,7 +354,7 @@ def create_ui():
                         if not opts.dimensions_and_batch_together:
                             with FormRow(elem_id="txt2img_column_batch"):
                                 batch_count = gr.Slider(minimum=1, step=1, label='Batch count', value=1, elem_id="txt2img_batch_count")
-                                batch_size = gr.Slider(minimum=1, maximum=8, step=1, label='Batch size', value=1, elem_id="txt2img_batch_size")
+                                batch_size = gr.Slider(minimum=1, maximum=8, step=1, label='Batch size2', value=1, elem_id="txt2img_batch_size")
 
                     elif category == "override_settings":
                         with FormRow(elem_id="txt2img_override_settings_row") as row:
@@ -379,6 +386,7 @@ def create_ui():
                     show_progress=False,
                 )
 
+            # I think this is the little row below after the image is created (has thumbnails + grid)?
             output_panel = create_output_panel("txt2img", opts.outdir_txt2img_samples, toprow)
 
             txt2img_inputs = [
@@ -404,6 +412,8 @@ def create_ui():
                 hr_prompt,
                 hr_negative_prompt,
                 override_settings,
+                multiple_run_count,
+                columnz_width,
             ] + custom_inputs
 
             txt2img_outputs = [
@@ -413,6 +423,7 @@ def create_ui():
                 output_panel.html_log,
             ]
 
+            # HERE txt2img() call
             txt2img_args = dict(
                 fn=wrap_gradio_gpu_call(modules.txt2img.txt2img, extra_outputs=[None, '', '']),
                 _js="submit",
@@ -1134,11 +1145,12 @@ def create_ui():
     for _interface, label, _ifid in interfaces:
         shared.tab_names.append(label)
 
-    with gr.Blocks(theme=shared.gradio_theme, analytics_enabled=False, title="Stable Diffusion") as demo:
+    with gr.Blocks(theme=shared.gradio_theme, analytics_enabled=False, title="Stable Diffusion-") as demo:
         settings.add_quicksettings()
 
         parameters_copypaste.connect_paste_params_buttons()
 
+        gr.HTML('<div> Title edit 😎 </div> <input id="bskiTitle" type="text" onkeyup="document.title=this.value; bskiTitleHack()" placeholder="Stable Diffusion" style="color: black; font-weight: bold;">')
         with gr.Tabs(elem_id="tabs") as tabs:
             tab_order = {k: i for i, k in enumerate(opts.ui_tab_order)}
             sorted_interfaces = sorted(interfaces, key=lambda x: tab_order.get(x[1], 9999))
@@ -1162,6 +1174,7 @@ def create_ui():
         footer = shared.html("footer.html")
         footer = footer.format(versions=versions_html(), api_docs="/docs" if shared.cmd_opts.api else "https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/API")
         gr.HTML(footer, elem_id="footer")
+        gr.Markdown("# Title")
 
         settings.add_functionality(demo)
 

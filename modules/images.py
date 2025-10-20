@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import functools
+import traceback
 import pytz
 import io
 import math
@@ -33,7 +34,12 @@ def get_font(fontsize: int):
         return ImageFont.truetype(roboto_ttf_file, fontsize)
 
 
-def image_grid(imgs, batch_size=1, rows=None):
+def image_grid(imgs, batch_size=1, rows=None, columnz=None):
+    
+    # print("imgs,", len(imgs))
+    # print(" batch_size=1,", batch_size) 
+    # print(" rows, ", rows) 
+    # print("columnz", columnz) 
     if rows is None:
         if opts.n_rows > 0:
             rows = opts.n_rows
@@ -50,6 +56,9 @@ def image_grid(imgs, batch_size=1, rows=None):
         rows = len(imgs)
 
     cols = math.ceil(len(imgs) / rows)
+
+    if columnz:
+        cols = columnz
 
     params = script_callbacks.ImageGridLoopParams(imgs, cols, rows)
     script_callbacks.image_grid_callback(params)
@@ -590,6 +599,8 @@ def save_image_with_geninfo(image, geninfo, filename, extension=None, existing_p
         image.save(filename, format=image_format, quality=opts.jpeg_quality, pnginfo=pnginfo_data)
 
     elif extension.lower() in (".jpg", ".jpeg", ".webp"):
+        print("--- BLOCKING jpg b/c of dumbass compressed grid  ---")
+        # return
         if image.mode == 'RGBA':
             image = image.convert("RGB")
         elif image.mode == 'I;16':
@@ -605,6 +616,7 @@ def save_image_with_geninfo(image, geninfo, filename, extension=None, existing_p
             })
 
             piexif.insert(exif_bytes, filename)
+
     elif extension.lower() == '.avif':
         if opts.enable_pnginfo and geninfo is not None:
             exif_bytes = piexif.dump({
@@ -724,7 +736,11 @@ def save_image(image, path, basename, seed=None, prompt=None, extension='png', i
             while os.path.exists(filename):
                 n += 1
                 filename = f"{filename_without_extension}-{n}{extension}"
-        os.replace(temp_file_path, filename)
+        try:
+            os.replace(temp_file_path, filename)
+        except Exception as e:
+            traceback.print_exc()  # prints the full stack trace
+            print("WE DONT HAVE A MOFO FILE OR SOMETHING")
 
     fullfn_without_extension, extension = os.path.splitext(params.filename)
     if hasattr(os, 'statvfs'):
@@ -752,6 +768,7 @@ def save_image(image, path, basename, seed=None, prompt=None, extension='png', i
             except Exception:
                 image = image.resize(resize_to)
         try:
+            print("--- Doing something with atomically_save_image ---")
             _atomically_save_image(image, fullfn_without_extension, ".jpg")
         except Exception as e:
             errors.display(e, "saving image as downscaled JPG")

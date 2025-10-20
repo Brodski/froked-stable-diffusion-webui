@@ -255,6 +255,10 @@ def load_file_from_url(
         file_name = os.path.basename(parts.path)
 
     cached_file = os.path.abspath(os.path.join(model_dir, file_name))
+    
+    print("load_file_from_url running ...........")
+    for param, val in locals().items():
+        print(f"zszz: {param}: {val}")
 
     if re_download or not os.path.exists(cached_file):
         os.makedirs(model_dir, exist_ok=True)

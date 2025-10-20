@@ -32,6 +32,7 @@ var optionsChangedCallbacks = [];
 var optionsAvailableCallbacks = [];
 var uiAfterUpdateTimeout = null;
 var uiCurrentTab = null;
+bskiTitleHack()
 
 /**
  * Register callback to be called at each UI update.
@@ -211,4 +212,47 @@ function uiElementInSight(el) {
     const isOnScreen = clRect.bottom > 0 && clRect.top < windowHeight;
 
     return isOnScreen;
+}
+
+function bskiTitleHack2() {
+    if (window.bskiGlobal?.isDone && window.bskiGlobal?.title) {
+        console.log("------ THE HACK ----- ")
+        console.log('Page is fully loaded');
+        document.title = window.bskiGlobal.title
+    }
+
+}
+function bskiTitleHack() {
+    let titlez = document.querySelector("#bskiTitle")?.value
+    originalAppTitle = titlez
+    window.bskiGlobal = {
+        title: titlez,
+        isDone: false
+    };
+}
+
+console.log("WTF?!?!??!!")
+console.log("WTF?!?!??!!")
+console.log("WTF?!?!??!!")
+console.log("WTF?!?!??!!")
+console.log("WTF?!?!??!!")
+
+function bskiXYZ() {
+    console.log("XYZZZZZZZZZ")
+    const scriptsXYZ = document.querySelector('#script_list');
+    setTimeout(() => {
+        // Select the 4th option
+        const options = scriptsXYZ.querySelectorAll('option, li');
+        if (options.length >= 4) {
+          options[3].click(); // Index 3 = 4th item
+        } else {
+          console.warn('Less than 4 items found in scriptsXYZ.');
+        }
+      }, 200);
+}
+
+if (document.readyState == "complete") {
+    bskiXYZ()
+} else {
+    window.addEventListener("load", () => { bskiXYZ() })
 }

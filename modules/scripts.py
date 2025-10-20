@@ -643,7 +643,7 @@ class ScriptRunner:
 
     def create_script_ui_inner(self, script):
         import modules.api.models as api_models
-
+        print("# create_script_ui_inner| script.filename: ", script.filename)
         controls = wrap_call(script.ui, script.filename, "ui", script.is_img2img)
         script.controls = controls
 
@@ -706,6 +706,7 @@ class ScriptRunner:
         self.inputs = [None]
 
     def setup_ui(self):
+        print("setup_ui(), script_args thing...")
         all_titles = [wrap_call(script.title, script.filename, "title") or script.filename for script in self.scripts]
         self.title_map = {title.lower(): script for title, script in zip(all_titles, self.scripts)}
         self.titles = [wrap_call(script.title, script.filename, "title") or f"{script.filename} [error]" for script in self.selectable_scripts]
@@ -719,7 +720,8 @@ class ScriptRunner:
 
         def select_script(script_index):
             if script_index is None:
-                script_index = 0
+                # script_index = 0
+                script_index = 3
             selected_script = self.selectable_scripts[script_index - 1] if script_index>0 else None
 
             return [gr.update(visible=selected_script == s) for s in self.selectable_scripts]
@@ -731,6 +733,7 @@ class ScriptRunner:
                 return
 
             script_index = self.titles.index(title)
+            # script_index = self.titles.index("X/Y/Z plot")
             self.selectable_scripts[script_index].group.visible = True
 
         dropdown.init_field = init_field
@@ -777,6 +780,14 @@ class ScriptRunner:
             return None
 
         script_args = args[script.args_from:script.args_to]
+        if len(script_args) > 7:
+            print(" script_args[0]",  script_args[0])        
+            print("script_args[3]", script_args[3])
+            print("script_args[6]", script_args[6])
+            print(" script['name']",  script.name)
+            if script_args[0] == 0 and script_args[3] == 0 and script_args[6] == 0 and script.name == "x/y/z plot":
+                return None
+
         processed = script.run(p, *script_args)
 
         shared.total_tqdm.clear()

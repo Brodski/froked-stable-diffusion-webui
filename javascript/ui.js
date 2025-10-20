@@ -153,11 +153,20 @@ function submit() {
     var id = randomId();
     localSet("txt2img_task_id", id);
 
+    
+    console.log("BAM!! REQUEST PROG CALLED 2")
+    console.log("BAM!! REQUEST PROG CALLED 2")
+    console.log("BAM!! REQUEST PROG CALLED 2")
+    console.log("BAM!! REQUEST PROG CALLED 2")
+    console.log("BAM!! REQUEST PROG CALLED 2")
+    console.log("BAM!! REQUEST PROG CALLED 2")
+    let title_bski = document.querySelector("#bskiTitle").value
     requestProgress(id, gradioApp().getElementById('txt2img_gallery_container'), gradioApp().getElementById('txt2img_gallery'), function() {
         showSubmitButtons('txt2img', true);
         localRemove("txt2img_task_id");
         showRestoreProgressButton('txt2img', false);
-    });
+    // });
+    }, null, 40, title_bski);
 
     var res = create_submit_args(arguments);
 
@@ -184,7 +193,7 @@ function submit_img2img() {
         showSubmitButtons('img2img', true);
         localRemove("img2img_task_id");
         showRestoreProgressButton('img2img', false);
-    });
+    }); // TODO?, see requestProgress above
 
     var res = create_submit_args(arguments);
 
@@ -216,6 +225,7 @@ function restoreProgressTxt2img() {
     var id = localGet("txt2img_task_id");
 
     if (id) {
+        console.log("BAM!! REQUEST PROG CALLED")
         showSubmitInterruptingPlaceholder('txt2img');
         requestProgress(id, gradioApp().getElementById('txt2img_gallery_container'), gradioApp().getElementById('txt2img_gallery'), function() {
             showSubmitButtons('txt2img', true);
@@ -298,6 +308,11 @@ function confirm_clear_prompt(prompt, negative_prompt) {
 
 var opts = {};
 onAfterUiUpdate(function() {
+    console.log("onAfterUiUpdate");
+
+    bskiTitleHack2();
+    bskiXYZ();
+    
     if (Object.keys(opts).length != 0) return;
 
     var json_elem = gradioApp().getElementById('settings_json');

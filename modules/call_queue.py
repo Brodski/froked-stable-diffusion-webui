@@ -22,6 +22,11 @@ def wrap_gradio_gpu_call(func, extra_outputs=None):
     @wraps(func)
     def f(*args, **kwargs):
 
+        print("argsz:")
+        print("argsz:")
+        print("argsz:")
+        print("argsz:")
+        print("argsz:")
         # if the first argument is a string that says "task(...)", it is treated as a job id
         if args and type(args[0]) == str and args[0].startswith("task(") and args[0].endswith(")"):
             id_task = args[0]
@@ -126,6 +131,7 @@ def wrap_gradio_call_no_job(func, extra_outputs=None, add_stats=False):
             profiling_html = ''
 
         # last item is always HTML
+        print("AFTER FINISHED/BREAK added cool UI message here")
         res[-1] += f"<div class='performance'><p class='time'>Time taken: <wbr><span class='measurement'>{elapsed_text}</span></p>{vram_html}{profiling_html}</div>"
 
         return tuple(res)

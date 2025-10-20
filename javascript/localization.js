@@ -91,7 +91,7 @@ function processNode(node) {
     if (node.title) {
         let tl = getTranslation(node.title);
         if (tl !== undefined) {
-            node.title = tl;
+            node.title = tl+"dicker";
         }
     }
 
@@ -121,7 +121,7 @@ function localizeWholePage() {
 
             let tl = e ? getTranslation(e.title) : undefined;
             if (tl !== undefined) {
-                e.title = tl;
+                e.title = tl+"dick";
             }
         }
         if (comp.props.placeholder) {

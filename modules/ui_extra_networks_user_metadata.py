@@ -173,6 +173,7 @@ class UserMetadataEditor:
             self.create_editor()
 
     def save_preview(self, index, gallery, name):
+        print("save_preview 1")
         if len(gallery) == 0:
             return self.get_card_html(name), "There is no image in gallery to save as a preview."
 
@@ -185,7 +186,7 @@ class UserMetadataEditor:
         img_info = gallery[index if index >= 0 else 0]
         image = infotext_utils.image_from_url_text(img_info)
         geninfo, items = images.read_info_from_image(image)
-
+        print("save_preview 2")
         images.save_image_with_geninfo(image, geninfo, item["local_preview"])
         self.page.lister.update_file_entry(item["local_preview"])
         item['preview'] = self.page.find_preview(item["local_preview"])
