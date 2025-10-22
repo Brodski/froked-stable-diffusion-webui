@@ -28,11 +28,15 @@ class ProcessedResultBski:
         self.index_of_first_image: int = 0
         self.promptSR_blocks_ui = []
 
-class PromptSR_Block:
+class To_Replace_List:
     def __init__(self):
         self.sr_arr: List[str] = [] # eg [big, medium, tiny]
         self.sr_neg_arr: List[str] = []
 
+class Prompt:
+    def __init__(self):
+        self.main: str = ""     # "a cool outspace landscape with space dinosaurs and space pirates"
+        self.negative: str = "" # "low res, worst, 6 fingers"
 
 class Script(scripts.Script):
     def __init__(self):
@@ -105,6 +109,12 @@ class Script(scripts.Script):
     #         print(f"Added to prompt: {extra_text}")
 
     def make_an_image(self, p: Processed) -> Processed:
+        
+        tricky_lazy_seed_counter = 1
+        p.seed = p.seed + tricky_lazy_seed_counter if p.seed != -1 else p.seed # this is not a accurate counter, but it does increment
+        # print(f"  !!!{() * (k+1)} out of {total_operations_counters}")
+        state.job = f"{(1) * (1+1)} out of {69}"
+        
         if shared.state.interrupted or state.stopping_generation:
             return Processed(p, [], p.seed, "")
         
@@ -125,7 +135,7 @@ class Script(scripts.Script):
     def wrangle_data(self, sr_prompt, sr_negative):
         pass
     
-    def truncate_excessive(self, promptSR_block: List[PromptSR_Block]):
+    def truncate_excessive(self, promptSR_block: List[To_Replace_List]):
         for sr_b in promptSR_block:
             num_operations = self.count_operations_level_1(sr_b.sr_arr, sr_b.sr_neg_arr)
             sr_b.sr_arr     = sr_b.sr_arr[:num_operations]
@@ -153,12 +163,7 @@ class Script(scripts.Script):
         sr_neg_count = len(sr_neg_arr) if len(sr_neg_arr) > 0 else float('inf')
 
         replace_operations_at_this_level = min(sr_neg_count, sr_count) if (min(sr_neg_count, sr_count) != float('inf')) else 0
-        
-        # print("-- infitit | sr_arr", sr_arr)
-        # print("-- infitit | sr_neg_arr", sr_neg_arr)
-        # print("-- infitit | sr_count", sr_count)
-        # print("-- infitit | sr_neg_count", sr_neg_count)
-        # print("-- infitit | replace_operations_at_this_level", replace_operations_at_this_level)
+
         return replace_operations_at_this_level
 
     # code sorta copied from "xyz_grid.py @ apply_prompt()"
@@ -168,15 +173,16 @@ class Script(scripts.Script):
         print("    % OLD", old_replace, " ---> NEW:", new_replace)
         print("    % OLD", old_replace, " ---> NEW:", new_replace)
         print("    % OLD", old_replace, " ---> NEW:", new_replace)
+        if not new_replace:
+            print("&^&^&^&^&^&^&^&^&^&^&&&&&&&&&&&&& FOUND SHIT")
+            return prompt, prompt_neg
         if old_replace not in prompt and old_replace not in prompt_neg:
-            print("old_replace=", old_replace)
-            print("p.prompt=",  p.prompt.replace("\n", " "))
+            print("|ERROR| old_replace=", old_replace)
+            print("|ERROR| prompt=",  prompt.replace("\n", " "))
             raise RuntimeError(f"Prompt S/R did not find {old_replace} in prompt or negative prompt.")
         
         # temp_prompt = self.mega_prompt_arr[idx][k]
         # temp_neg_prompt = self.mega_prompt_neg_arr[idx][k]
-
-
         if lazy_id == "is_prompt":
             prompt = prompt.replace(old_replace, new_replace)
             p.prompt = prompt
@@ -190,94 +196,151 @@ class Script(scripts.Script):
             
         # BOOM
         return prompt, prompt_neg
+    
+    def gen_prompts(self, prompt: Prompt, replace_todos: To_Replace_List):
+        new_promptz: List[Prompt] = []
+        
+        num_replaces_todo = max(len(replace_todos.sr_arr), len(replace_todos.sr_neg_arr))
+        for i in range(0, num_replaces_todo):
+            str_main, str_neg = None, None
+            if i > 1: # skip the 1st one
+                if replace_todos.sr_arr: #not empty
+                    old = replace_todos.sr_arr[i-1]
+                    new = replace_todos.sr_arr[i]
+                    is_type = "is_prompt"
+                    str_main, str_neg = self.replace_that_2(old, new,  prompt, is_type)
+                if replace_todos.sr_neg_arr:
+                    old = replace_todos.sr_neg_arr[i-1]
+                    new = replace_todos.sr_neg_arr[i]
+                    is_type = "is_neg_prompt"
+                    str_main, str_neg = self.replace_that_2(old, new,  prompt, is_type)
+            new_p = Prompt()
+            new_p.main = str_main or prompt.main
+            new_p.negative = str_neg or prompt.negative
+            new_promptz.append(new_p)
 
-    def replace_infinit_sr2(self, p: Processed, idx_, promptSR_block_arr: List[PromptSR_Block], prompt: str, prompt_neg: str):
+    # code sorta copied from "xyz_grid.py @ apply_prompt()"
+    def replace_that_2(self, old_replace, new_replace, prompt: Prompt, lazy_id) -> Prompt: 
+        print("    % OLD", old_replace, " ---> NEW:", new_replace)
+        print("    % OLD", old_replace, " ---> NEW:", new_replace)
+        print("    % OLD", old_replace, " ---> NEW:", new_replace)
+        if not new_replace:
+            print("&^&^&^&^&^&^&^&^&^&^&&&&&&&&&&&&& FOUND SHIT")
+            raise RuntimeError(f"new_replace is NULL!!! {new_replace}")
+        if old_replace not in prompt.main and old_replace not in prompt.negative:
+            print("|ERROR| old_replace=", old_replace)
+            print("|ERROR| prompt=",  prompt.replace("\n", " "))
+            raise RuntimeError(f"Prompt S/R did not find {old_replace} in prompt or negative prompt.")
+        pmt = Prompt()
+        pmt.main = prompt.main
+        pmt.negative = prompt.negative
+        if lazy_id == "is_prompt":
+            pmt.main = prompt.main.replace(old_replace, new_replace)
+        if lazy_id == "is_neg_prompt":
+            pmt.negative = prompt.negative.replace(old_replace, new_replace)
+            
+        # BOOM
+        return pmt.main, pmt.negative
+
+    # def replace_infinit_sr2(self, p: Processed, idx_, init_prompts: List[str], promptSR_block_arr: List[To_Replace_List], prompt: str, prompt_neg: str):
+    def replace_infinit_sr2(self, p: Processed, idx_, init_prompts: List[dict], promptSR_block_arr: List[To_Replace_List]):
+        cnt = 0
+        for ppp in promptSR_block_arr:
+            print("?2?2 ", cnt, ": ", ppp.sr_arr)
+            cnt = cnt + 1
         # fyi: promptSR_block_arr = [prompt_sr1, prompt_sr2, prompt_sr3, ...]
         # fyi: prompt_sr          = sr, sr_neg 
         # fyi: sr, sr_neg         = [big, small, tiny], [outside, inside, city]
-        for k, promptSR_input in enumerate(promptSR_block_arr):
-            promptSR_block: PromptSR_Block = promptSR_input
-            num_replaces_todo = max(len(promptSR_block.sr_arr), len(promptSR_block.sr_neg_arr))
+        if not promptSR_block_arr:
+            return
+        # for k, promptSR_input in enumerate(promptSR_block_arr):
+            # promptSR_block: To_Replace_List = promptSR_input
+        new_prompts = []
 
-            prompt_queue = []
+        promptSR_block: To_Replace_List = promptSR_block_arr[0]
+        num_replaces_todo = max(len(promptSR_block.sr_arr), len(promptSR_block.sr_neg_arr))
+
+        print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        previous_prompt = None
+        previous_neg_prompt = None
+        for i, p__ in enumerate(init_prompts):
+            print(f"    # {i} ---> init_prompts=", p__['prompt'].replace('\n', "")[:66])
+        for k, promptz in enumerate(init_prompts):
+            prompt = previous_prompt or promptz['prompt'] 
+            prompt_neg = previous_neg_prompt or promptz['neg_prompt_'] 
+
+            print(f"******* GOING IN: {k} of {len(init_prompts)} *******")
+            print(f"******* GOING IN: {k} of {len(init_prompts)} *******")
+            print(f"******* GOING IN: {k} of {len(init_prompts)} *******")
+            print(f"******* GOING IN: {k} of {len(init_prompts)} *******")
+            print(f"******* GOING IN: {k} of {len(init_prompts)} *******")
+            
             for j in range(0, num_replaces_todo):
-                
-                print("    # # # # # # # # # # # # # # # # # # # # # # # # ")
+                print("\n    # # # # # # # # # # # # # # # # # # # # # # # # ")
                 print(f"    # ({idx_}, {j}) # ")
-                print("    # prompt: " + prompt.replace('\n', ''))
-                tuplez = (idx_, j)
-                if j > 0: # skip first entry
-                    if promptSR_block.sr_arr: #not empty
-                        prompt, prompt_neg = self.replace_that(p, (idx_, j), promptSR_block.sr_arr[j-1], promptSR_block.sr_arr[j], prompt, prompt_neg, "is_prompt")
-                    if promptSR_block.sr_neg_arr:
-                        prompt, prompt_neg = self.replace_that(p, (idx_, j), promptSR_block.sr_neg_arr[j-1], promptSR_block.sr_neg_arr[j],  prompt, prompt_neg,"is_neg_prompt")
-                prompt_queue.append([str(prompt), str(prompt_neg)])
+                print(f"    # len(init_prompts):", len(init_prompts))
+                print("    # prompt: " + prompt.replace('\n', '')[:66])
+                if j == 0: # skip first entry
+                    print(" --- SKIP --- ")
+                    continue
+                idx_prev = max(0, j-1)
+                to_be_replaced = promptSR_block.sr_arr[idx_prev] if promptSR_block.sr_arr else None
+                to_be_replaced_neg = promptSR_block.sr_neg_arr[idx_prev] if promptSR_block.sr_neg_arr else None
 
-                tricky_lazy_seed_counter = 1
-                p.seed = p.seed + tricky_lazy_seed_counter if p.seed != -1 else p.seed # this is not a accurate counter, but it does increment
-                # print(f"  !!!{() * (k+1)} out of {total_operations_counters}")
-                state.job = f"{(1) * (j+1)} out of {69}"
+
+                if promptSR_block.sr_arr: #not empty
+                    prompt, prompt_neg = self.replace_that(p, (idx_, j), to_be_replaced, promptSR_block.sr_arr[j], prompt, prompt_neg, "is_prompt")
+                if promptSR_block.sr_neg_arr:
+                    prompt, prompt_neg = self.replace_that(p, (idx_, j), to_be_replaced_neg, promptSR_block.sr_neg_arr[j],  prompt, prompt_neg,"is_neg_prompt")
+                # if promptSR_block.sr_arr: #not empty
+                #     prompt, prompt_neg = self.replace_that(p, (idx_, j), promptSR_block.sr_arr[j-1], promptSR_block.sr_arr[j], prompt, prompt_neg, "is_prompt")
+                # if promptSR_block.sr_neg_arr:
+                #     prompt, prompt_neg = self.replace_that(p, (idx_, j), promptSR_block.sr_neg_arr[j-1], promptSR_block.sr_neg_arr[j],  prompt, prompt_neg,"is_neg_prompt")
+                new_prompts.append({
+                    'prompt' : prompt,
+                    'neg_prompt_' : prompt_neg
+                })
+                # previous_prompt = prompt
+                # previous_neg_prompt = prompt_neg
+                
                 processed: Processed = self.make_an_image(p)
 
 
-                # idk why i made this a loop, but i guess i'm keeping it
-                for i, img in enumerate(processed.images):
-                    # print("    infinite| i, img:", i, img)
-                    self.processed_results_bski.images.append(img)
-                    self.processed_results_bski.all_prompts.append(processed.prompt)
-                    self.processed_results_bski.all_seeds.append(processed.seed)
-                    self.processed_results_bski.infotexts.append(processed.infotexts[0])
+            # idk why i made this a loop, but i guess i'm keeping it
+            for i, img in enumerate(processed.images):
+                # print("    infinite| i, img:", i, img)
+                self.processed_results_bski.images.append(img)
+                self.processed_results_bski.all_prompts.append(processed.prompt)
+                self.processed_results_bski.all_seeds.append(processed.seed)
+                self.processed_results_bski.infotexts.append(processed.infotexts[0])
+            # else:
+            #     print("    # skip.........................")
+        
+        # BOOM 
+        init_prompts.extend(new_prompts)
 
             # after we replace all for current 
-            print("    ********************************* ")
-            print("    * COMPLETED ROUND ", idx_)
-            ass = 0
-            for prompttt_ in prompt_queue:
-                pmt = prompttt_[0]
-                print("    * prompt", ass, ": ", pmt.replace("\n", " "))
-                ass = ass + 1
-            cnt = 0
-            for ppp in promptSR_block_arr[1:]:
-                print("    ** ", cnt, ": ", ppp)
-                cnt = cnt + 1
-                
-            for prompttt_ in prompt_queue:
-                pmt = prompttt_[0]
-                pmt_neg = prompttt_[1]
-                self.replace_infinit_sr2(p, idx_+1, promptSR_block_arr[1:], pmt, pmt_neg)
+        print("********************************** ")
+        print("** COMPLETED ROUND ", idx_)
+        ass = 0
+        for prompttt_ in init_prompts:
+            pmt = prompttt_['prompt']
+            print(" $$$$ init_prompts", ass, ": ", pmt.replace("\n", " ")[:66])
+            ass = ass + 1
+        cnt = 0
+        for ppp in promptSR_block_arr[1:]:
+            print(" $$$$ BLOCK ", cnt, ": ", ppp.sr_arr)
+            cnt = cnt + 1
+            
+        # for prompttt_ in prompt_queue:
+        #     pmt = prompttt_[0]
+        #     pmt_neg = prompttt_[1]
+        #     self.replace_infinit_sr2(p, idx_+1, init_prompts, promptSR_block_arr[1:])
+
+        self.replace_infinit_sr2(p, idx_+1, init_prompts, promptSR_block_arr[1:])
         return
-
-    # def replace_infinit_sr(self, p: Processed, idx_, promptSR_block_arr: List[PromptSR_Block], prompt: str, prompt_neg: str):
-    # #     # fyi: promptSR_block_arr = [prompt_sr1, prompt_sr2, prompt_sr3, ...]
-    # #     # fyi: prompt_sr          = sr, sr_neg 
-    # #     # fyi: sr, sr_neg         = [big, small, tiny], [outside, inside, city]
-    #     for k, promptSR_input in enumerate(promptSR_block_arr):
-    #         length = max(len(promptSR_input.sr_arr), len(promptSR_input.sr_neg_arr))
-    #         for j in range(0,length):
-    #             if j > 0: # skip first entry
-    #                 if promptSR_input.sr_arr: #not empty
-    #                     self.replace_that(p, (idx_, j), promptSR_input.sr_arr[j-1], promptSR_input.sr_arr[j], "is_prompt")
-    #                 if promptSR_input.sr_neg_arr:
-    #                     self.replace_that(p, (idx_, j), promptSR_input.sr_neg_arr[j-1], promptSR_input.sr_neg_arr[j], "is_neg_prompt")
-
-    #             tricky_lazy_seed_counter = 1
-    #             p.seed = p.seed + tricky_lazy_seed_counter if p.seed != -1 else p.seed # this is not a accurate counter, but it does increment
-    #             # print(f"  !!!{() * (k+1)} out of {total_operations_counters}")
-    #             state.job = f"{(1) * (k+1)} out of {69}"
-    #             processed: Processed = self.make_an_image(p)
-
-    #             # idk why i made this a loop, but i guess i'm keeping it
-    #             for i, img in enumerate(processed.images):
-    #                 # print("    infinite| i, img:", i, img)
-    #                 self.processed_results_bski.images.append(img)
-    #                 self.processed_results_bski.all_prompts.append(processed.prompt)
-    #                 self.processed_results_bski.all_seeds.append(processed.seed)
-    #                 self.processed_results_bski.infotexts.append(processed.infotexts[0])
-
-    #     # after we replace all for current 
-    #     self.replace_infinit_sr(p, idx_+1, promptSR_block[1:])
-    #     return
-
 
     # A111 Hook
     def run(self, p: Processed, *promptSR_blocks_ui):
@@ -301,7 +364,7 @@ class Script(scripts.Script):
         print("    infinit |state.job_count", state.job_count)
 
         # create bski_promptz
-        promptSR_block_arr: List[PromptSR_Block] = []
+        promptSR_block_arr: List[To_Replace_List] = []
         for idx in range(0, len(promptSR_blocks_ui), MINI_BLOCK_LENGTH): # auto1111 gradio thing is stupid, prob have to do this b/c `def ui()` must return gradio components
             print("(bigloop)   idx:", idx)
             sr_prompt = promptSR_blocks_ui[idx]
@@ -310,7 +373,7 @@ class Script(scripts.Script):
             sr_arr: List[str] = csv_string_to_list_strip(sr_prompt)
             sr_neg_arr: List[str] = csv_string_to_list_strip(sr_neg_prompt)
             
-            promptSR_block = PromptSR_Block()
+            promptSR_block = To_Replace_List()
             promptSR_block.sr_arr = sr_arr
             promptSR_block.sr_neg_arr = sr_neg_arr
             promptSR_block_arr.append(promptSR_block)
@@ -339,7 +402,13 @@ class Script(scripts.Script):
 
 
         # Boom 3
-        self.replace_infinit_sr2(p, 0, promptSR_block_arr, str(p.prompt), str(p.negative_prompt))
+        init_prompts = [{
+            "prompt": str(p.prompt),
+            "neg_prompt_": str(p.negative_prompt)
+            
+        }]
+        processed: Processed = self.make_an_image(p)
+        self.replace_infinit_sr2(p, 0, init_prompts, promptSR_block_arr)
 
 
         if not any(self.processed_results_bski.images):
