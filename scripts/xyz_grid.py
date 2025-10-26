@@ -499,10 +499,10 @@ class Script(scripts.Script):
                     vary_seeds_y = gr.Checkbox(label='Vary seeds for Y', value=False, min_width=80, elem_id=self.elem_id("vary_seeds_y"), tooltip="Use different seeds for images along Y axis.")
                     vary_seeds_z = gr.Checkbox(label='Vary seeds for Z', value=False, min_width=80, elem_id=self.elem_id("vary_seeds_z"), tooltip="Use different seeds for images along Z axis.")
             with gr.Column():
-                include_lone_images = gr.Checkbox(label='Include Sub Images', value=False, elem_id=self.elem_id("include_lone_images"))
+                include_lone_images = gr.Checkbox(label='Include Sub Images (LEAVE UNCHECK)', value=False, elem_id=self.elem_id("include_lone_images"))
                 csv_mode = gr.Checkbox(label='Use text inputs instead of dropdowns', value=False, elem_id=self.elem_id("csv_mode"))
 
-        with InputAccordion(True, label='Draw grid', elem_id=self.elem_id('draw_grid')) as draw_grid:
+        with InputAccordion(True, label='Draw grid (aka Save 😡)', elem_id=self.elem_id('draw_grid')) as draw_grid:
             with gr.Row():
                 include_sub_grids = gr.Checkbox(label='Include Sub Grids', value=False, elem_id=self.elem_id("include_sub_grids"))
                 draw_legend = gr.Checkbox(label='Draw legend', value=True, elem_id=self.elem_id("draw_legend"))
@@ -590,7 +590,7 @@ class Script(scripts.Script):
         return [x_type, x_values, x_values_dropdown, y_type, y_values, y_values_dropdown, z_type, z_values, z_values_dropdown, draw_legend, include_lone_images, include_sub_grids, no_fixed_seeds, vary_seeds_x, vary_seeds_y, vary_seeds_z, margin_size, csv_mode, draw_grid]
 
     # called in def txt2img() @ txt2img.py
-    def run(self, p, x_type, x_values, x_values_dropdown, y_type, y_values, y_values_dropdown, z_type, z_values, z_values_dropdown, draw_legend, include_lone_images, include_sub_grids, no_fixed_seeds, vary_seeds_x, vary_seeds_y, vary_seeds_z, margin_size, csv_mode, draw_grid):
+    def run(self, p: StableDiffusionProcessingTxt2Img, x_type, x_values, x_values_dropdown, y_type, y_values, y_values_dropdown, z_type, z_values, z_values_dropdown, draw_legend, include_lone_images, include_sub_grids, no_fixed_seeds, vary_seeds_x, vary_seeds_y, vary_seeds_z, margin_size, csv_mode, draw_grid):
         x_type, y_type, z_type = x_type or 0, y_type or 0, z_type or 0  # if axle type is None set to 0
 
         if not no_fixed_seeds:
@@ -850,7 +850,8 @@ class Script(scripts.Script):
             # Set the grid infotexts to the real ones with extra_generation_params (1 main grid + z_count sub-grids)
             processed.infotexts[:1 + z_count] = grid_infotext[:1 + z_count]
 
-        if not include_lone_images and p.columnz_width < 1:
+        # if not include_lone_images and p.columnz_width < 1:
+        if not include_lone_images:
             # Don't need sub-images anymore, drop from list:
             processed.images = processed.images[:z_count + 1] if draw_grid else []
 

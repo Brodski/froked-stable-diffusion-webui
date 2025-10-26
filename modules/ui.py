@@ -293,7 +293,7 @@ def create_ui():
                     elif category == "dimensions":
                         with FormRow():
                             with gr.Column(elem_id="txt2img_column_size", scale=4):
-                                width = gr.Slider(minimum=64, maximum=3052, step=8, label="Width - 512 - 768 - 1024", value=768, elem_id="txt2img_width")
+                                width = gr.Slider(minimum=64, maximum=3052, step=8, label="Width - 512 - 768 - 868 - 1024", value=768, elem_id="txt2img_width")
                                 height = gr.Slider(minimum=64, maximum=3052, step=8, label="Height - 512 - 1024|1344|1536 - 2048", value=1536, elem_id="txt2img_height")
 
                             with gr.Column(elem_id="txt2img_dimensions_row", scale=1, elem_classes="dimensions-tools"):

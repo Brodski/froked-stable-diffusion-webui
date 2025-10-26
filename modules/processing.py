@@ -871,7 +871,6 @@ def process_images_inner(p: StableDiffusionProcessing) -> Processed:
         assert p.prompt is not None
 
     devices.torch_gc()
-
     seed = get_fixed_seed(p.seed)
     subseed = get_fixed_seed(p.subseed)
 
