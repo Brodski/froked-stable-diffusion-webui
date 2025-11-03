@@ -127,17 +127,18 @@ class Script(scripts.Script):
                         - {msg3}
                         - {msg1}
                         - {msg2}
-                        - {link_msg}[[↗]]({link})""")
+                        - {link_msg}. Docs [[↗]]({link})""")
             
         # MUST RETURN SHITTY GRADIO UI COMPONENTS!
         return [*self.promptSR_blocks_ui]
 
-    def make_an_image(self, p: Processed) -> Processed:
+    def make_the_images(self, p: StableDiffusionProcessingTxt2Img) -> Processed:
         
         if shared.state.interrupted or state.stopping_generation:
             return Processed(p, [], p.seed, "")
         
         print('make image, pseed:', p.seed)
+        p.do_not_save_grid = True #im putting it here, you like it or not.
         p_copy = copy(p)
         print('make image, p_copy.seed:', p_copy.seed)
         p_copy.styles = p_copy.styles[:]
@@ -351,7 +352,8 @@ class Script(scripts.Script):
             fix_seed(p)
         print(" 🙀 AFTER FIXED SEED:", p.seed)
 
-        
+        if p.columnz_width and p.columnz_width > 0:
+            p.columnz_width = 0 # Avoid conflict w/ my custom code elsewhere
 
         # IMPORTANT 
         # ---> Must update this per component in the accordion @ UI. (idk if there exists a smart way, but i lazy)
@@ -418,7 +420,6 @@ class Script(scripts.Script):
         print(" @total_items:", total_items)
         print(" @")
         if grid_type == Grid_Type.TREE_FUNK.value:
-            # processed: Processed = self.make_an_image(p)
             mega_all: List[Prompt] = self.replace_infinit_sr(0, init_prompts, replaces_list)
         if grid_type == Grid_Type.COLLAPSE_INJECT.value:
             mega_all: List[Prompt] = self.cross_pollinate(init_prompts, replaces_list)
@@ -465,14 +466,14 @@ class Script(scripts.Script):
             if radio_seed_type ==  Seed_Type.FIXED_SEED.value:
                 pass
 
-            processed: Processed = self.make_an_image(p)
+            processed: Processed = self.make_the_images(p)
             self.processed_results_bski._processed = processed # not really ideal, but w/e, seems A1111 code is kinda goofy anyways
 
-            if len(processed.images) > 1:
-                # when batch/n_iter > 1, make_an_image() will create +1 image which will be the seed
+            # if len(processed.images) > 1:
+            if len(processed.images) > p.n_iter:
+                # when batch/n_iter > 1, make_the_images() will create the grid image 
                 processed.images = processed.images[1:]
 
-            # idk why i made this a loop, but i guess i'm keeping it
             for k, img in enumerate(processed.images):
                 # print("    infinite| i, img:", i, img)
                 self.processed_results_bski.images.append(img)

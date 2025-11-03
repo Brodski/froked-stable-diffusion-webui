@@ -35,7 +35,7 @@ def do_column_thing(processed, columnz_width, outpath_grids, grid_format):
                 # we get each row of images, (x images/columns long, then save it in grid_row_cut to be saved later
                 offset_low = i_ * columnz_width          if i_ > 0 else 0                  # 0, 2, 5, 8 ...
                 offset_high = offset_low + columnz_width if i_ > 0 else columnz_width     # 2, 5, 8, 11 ...
-                print(i_, "X splitting at:", offset_low, offset_high)
+                print(i_, "X splitting at: [", offset_low, offset_high, ")")
                 grid_row_cut = images.image_grid(aux_processed_res_images[offset_low:offset_high], rows=1, columnz=columnz_width)
                 # processed_result.images.append(grid_row_cut) 
                 processed.bski_splitter.imagez.append(grid_row_cut)
