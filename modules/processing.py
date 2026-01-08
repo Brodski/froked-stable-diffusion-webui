@@ -224,6 +224,10 @@ class StableDiffusionProcessing:
     sd_vae_hash: str = field(default=None, init=False)
 
     is_api: bool = field(default=False, init=False)
+    
+    #HEREHEREHERE
+    multiple_run_count: int = 1
+    columnz_width: int = 0
 
     def __post_init__(self):
         if self.sampler_index is not None:
@@ -1204,10 +1208,10 @@ class StableDiffusionProcessingTxt2Img(StableDiffusionProcessing):
     hr_prompts: list = field(default=None, init=False)
     hr_negative_prompts: list = field(default=None, init=False)
     hr_extra_network_data: list = field(default=None, init=False)
-#HEREHEREHERE
-    multiple_run_count: int = 1
+# #HEREHEREHERE
+#     multiple_run_count: int = 1
 
-    columnz_width: int = 0
+#     columnz_width: int = 0
 
     def __post_init__(self):
         super().__post_init__()

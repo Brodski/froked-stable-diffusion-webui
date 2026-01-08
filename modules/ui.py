@@ -672,7 +672,8 @@ def create_ui():
                                 with gr.Column(elem_id="img2img_column_batch"):
                                     batch_count = gr.Slider(minimum=1, step=1, label='Batch count', value=1, elem_id="img2img_batch_count")
                                     batch_size = gr.Slider(minimum=1, maximum=8, step=1, label='Batch size', value=1, elem_id="img2img_batch_size")
-
+                                    columnz_width_img = gr.Slider(label="columnz_width_img", minimum=0, maximum=10, value=0, step=1, elem_id="columnz_width_img") #elem_id starting will "txt2img_res" will for min=1 and max=100, i have no idea why the dumbass devs would do that
+                            
                     elif category == "denoising":
                         denoising_strength = gr.Slider(minimum=0.0, maximum=1.0, step=0.01, label='Denoising strength', value=0.75, elem_id="img2img_denoising_strength")
 
@@ -784,6 +785,7 @@ def create_ui():
                     img2img_batch_png_info_dir,
                     img2img_batch_source_type,
                     img2img_batch_upload,
+                    columnz_width_img,
                 ] + custom_inputs,
                 outputs=[
                     output_panel.gallery,

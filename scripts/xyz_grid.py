@@ -438,7 +438,7 @@ def draw_xyz_grid(p, xs, ys, zs, x_labels, y_labels, z_labels, cell, draw_legend
         z_grid = images.draw_grid_annotations(z_grid, z_sub_grid_max_w, z_sub_grid_max_h, title_texts, [[images.GridAnnotation()]])
 
     # z_grid is a duplicate for w/e reason
-    if p.columnz_width > 1:  
+    if p.columnz_width >= 1:
         return processed_result
     processed_result.images.insert(0, z_grid) #IGNORE IF COLMNZ > 1
     processed_result.infotexts.insert(0, processed_result.infotexts[0])

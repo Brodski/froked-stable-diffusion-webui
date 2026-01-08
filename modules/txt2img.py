@@ -144,9 +144,9 @@ def txt2img(id_task: str, request: gr.Request, *args):
 
     if p.columnz_width > 0 and not hasattr(processed, "bski_splitter"):
         # is_xyz_grid = False if p.n_iter <= len(processed.images) else True
-        print("do_column_thing1 ")
-        print("do_column_thing1 ")
-        print("do_column_thing1 ")
+        print("do_column_thing txt2img ")
+        print("do_column_thing txt2img ")
+        print("do_column_thing txt2img ")
         processed = bski_split_helper.do_column_thing(processed, p.columnz_width, p.outpath_grids, opts.grid_format)
 
     generation_info_js = processed.js()

@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image, ImageOps, ImageFilter, ImageEnhance, UnidentifiedImageError
 import gradio as gr
 
-from modules import images
+from modules import images, bski_split_helper
 from modules.infotext_utils import create_override_settings_dict, parse_generation_parameters
 from modules.processing import Processed, StableDiffusionProcessingImg2Img, process_images
 from modules.shared import opts, state
@@ -149,7 +149,7 @@ def process_batch(p, input, output_dir, inpaint_mask_dir, args, to_scale=False, 
     return batch_results
 
 
-def img2img(id_task: str, request: gr.Request, mode: int, prompt: str, negative_prompt: str, prompt_styles, init_img, sketch, init_img_with_mask, inpaint_color_sketch, inpaint_color_sketch_orig, init_img_inpaint, init_mask_inpaint, mask_blur: int, mask_alpha: float, inpainting_fill: int, n_iter: int, batch_size: int, cfg_scale: float, image_cfg_scale: float, denoising_strength: float, selected_scale_tab: int, height: int, width: int, scale_by: float, resize_mode: int, inpaint_full_res: bool, inpaint_full_res_padding: int, inpainting_mask_invert: int, img2img_batch_input_dir: str, img2img_batch_output_dir: str, img2img_batch_inpaint_mask_dir: str, override_settings_texts, img2img_batch_use_png_info: bool, img2img_batch_png_info_props: list, img2img_batch_png_info_dir: str, img2img_batch_source_type: str, img2img_batch_upload: list, *args):
+def img2img(id_task: str, request: gr.Request, mode: int, prompt: str, negative_prompt: str, prompt_styles, init_img, sketch, init_img_with_mask, inpaint_color_sketch, inpaint_color_sketch_orig, init_img_inpaint, init_mask_inpaint, mask_blur: int, mask_alpha: float, inpainting_fill: int, n_iter: int, batch_size: int, cfg_scale: float, image_cfg_scale: float, denoising_strength: float, selected_scale_tab: int, height: int, width: int, scale_by: float, resize_mode: int, inpaint_full_res: bool, inpaint_full_res_padding: int, inpainting_mask_invert: int, img2img_batch_input_dir: str, img2img_batch_output_dir: str, img2img_batch_inpaint_mask_dir: str, override_settings_texts, img2img_batch_use_png_info: bool, img2img_batch_png_info_props: list, img2img_batch_png_info_dir: str, img2img_batch_source_type: str, img2img_batch_upload: list, columnz_width_img: int, *args):
     override_settings = create_override_settings_dict(override_settings_texts)
 
     is_batch = mode == 5
@@ -212,6 +212,7 @@ def img2img(id_task: str, request: gr.Request, mode: int, prompt: str, negative_
         inpaint_full_res_padding=inpaint_full_res_padding,
         inpainting_mask_invert=inpainting_mask_invert,
         override_settings=override_settings,
+        columnz_width=columnz_width_img,
     )
 
     p.scripts = modules.scripts.scripts_img2img
@@ -223,6 +224,14 @@ def img2img(id_task: str, request: gr.Request, mode: int, prompt: str, negative_
         print(f"\nimg2img: {prompt}", file=shared.progress_print_out)
 
     with closing(p):
+        print("!*****************************")
+        print("!*****************************")
+        print(f"!******     img2img     *****")
+        print("!*****************************")
+        print("!*****************************")
+        print("p.multiple_run_count:", p.multiple_run_count)
+        print("p.seed", p.seed)
+
         if is_batch:
             if img2img_batch_source_type == "upload":
                 assert isinstance(img2img_batch_upload, list) and img2img_batch_upload
@@ -243,6 +252,13 @@ def img2img(id_task: str, request: gr.Request, mode: int, prompt: str, negative_
 
     shared.total_tqdm.clear()
 
+
+    if p.columnz_width > 0 and not hasattr(processed, "bski_splitter"):
+        # is_xyz_grid = False if p.n_iter <= len(processed.images) else True
+        print("do_column_thing img2img ")
+        print("do_column_thing img2img ")
+        print("do_column_thing img2img ")
+        processed = bski_split_helper.do_column_thing(processed, p.columnz_width, p.outpath_grids, opts.grid_format)
     generation_info_js = processed.js()
     if opts.samples_log_stdout:
         print(generation_info_js)

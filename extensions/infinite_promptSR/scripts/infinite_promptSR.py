@@ -38,6 +38,7 @@ class To_Replace:
     def __init__(self):
         self.sr_arr: List[str] = [] # eg [big, medium, tiny]
         self.sr_neg_arr: List[str] = []
+        self.is_enabled: bool = False
 
 class Prompt:
     def __init__(self):
@@ -95,7 +96,7 @@ class Script(scripts.Script):
 
             with gr.Row():
                 radio_grid = gr.Radio([radio_grid_1, radio_grid_2, radio_grid_3], value=radio_grid_3, label="Grid display type")
-                slider = gr.Slider(minimum=0, maximum=10, step=1, value=3, label="columnz_width")
+                slider = gr.Slider(minimum=1, maximum=10, step=1, value=3, label="columnz_width")
             with gr.Row():
                 radio_seed = gr.Radio([radio_seed_1, radio_seed_2], value=radio_seed_2, label="Seed behavior. (fixed_seed good for testing, increment_continuously_seed good for varying content, i.e. new seed always")
             # info1 = gr.HTML(f"<p style=\"margin-bottom:0.75em\">{msg1}</p>")
@@ -109,25 +110,34 @@ class Script(scripts.Script):
             for i in range(1, num_entries + 1):
                 with gr.Accordion(f"Prompt SR", open=True):
                     with gr.Row():
+                        is_enabled = gr.Checkbox(label="Enable", value=False)
+                    with gr.Row():
                         prompt = gr.Textbox(
                             label=f"Positive {i}",
                             placeholder='"red hair, blue shirt"\n"spiked hair, punk shirt, leather boots"\nect...' if i == 1 else "...",
                             lines=3
                         )        
+                    with gr.Row():
                         neg_prompt = gr.Textbox(
                             label=f"Negative {i}",
                             placeholder="...",
-                            lines=3
+                            lines=1
                         )
-                        # have to do this b/c how they wrote it.
-                        self.promptSR_blocks_ui.append(prompt)  # store reference, tuples
-                        self.promptSR_blocks_ui.append(neg_prompt) 
+                    # have to do this b/c how they wrote it.
+                    self.promptSR_blocks_ui.append(is_enabled)
+                    self.promptSR_blocks_ui.append(prompt)  # store reference, tuples
+                    self.promptSR_blocks_ui.append(neg_prompt) 
 
-            gr.Markdown(f"""## Info
-                        - {msg3}
+            with gr.Accordion(f"Info", open=False):
+                gr.Markdown(f"""- {msg3}
                         - {msg1}
                         - {msg2}
                         - {link_msg}. Docs [[↗]]({link})""")
+            # gr.Markdown(f"""## Info
+            #             - {msg3}
+            #             - {msg1}
+            #             - {msg2}
+            #             - {link_msg}. Docs [[↗]]({link})""")
             
         # MUST RETURN SHITTY GRADIO UI COMPONENTS!
         return [*self.promptSR_blocks_ui]
@@ -159,22 +169,6 @@ class Script(scripts.Script):
             sr_b.sr_arr     = sr_b.sr_arr[:num_operations]
             sr_b.sr_neg_arr = sr_b.sr_neg_arr[:num_operations]
             # cut off excessive prompts
-
-
-    # stupid copy paste code, i know, i lazy.
-    def estimate_job_count_UI(self, promptSR_blocks_ui, MINI_BLOCK_LENGTH):
-        total_operations_counters = 0 
-        for idx in range(0, len(promptSR_blocks_ui), MINI_BLOCK_LENGTH): 
-            sr_prompt = promptSR_blocks_ui[idx]
-            sr_neg_prompt = promptSR_blocks_ui[idx + 1]
-
-            sr_arr: List[str] = csv_string_to_list_strip(sr_prompt)
-            sr_neg_arr: List[str] = csv_string_to_list_strip(sr_neg_prompt)
-            
-            num_operations = self.count_operations_level_1(sr_arr, sr_neg_arr)
-            total_operations_counters = total_operations_counters * num_operations
-        return total_operations_counters
-
 
     def count_operations_level_1(self, sr_arr: List[str], sr_neg_arr: List[str]):
         sr_count = len(sr_arr) if len(sr_arr) > 0 else float('inf')
@@ -213,9 +207,7 @@ class Script(scripts.Script):
         print("    % OLD", old_replace, " ---> NEW:", new_replace)
         print("    % OLD", old_replace, " ---> NEW:", new_replace)
         print("    % OLD", old_replace, " ---> NEW:", new_replace)
-        if not new_replace:
-            print("&^&^&^&^&^&^&^&^&^&^&&&&&&&&&&&&& FOUND SHIT")
-            raise RuntimeError(f"new_replace is NULL!!! {new_replace}")
+
         if old_replace not in prompt.main and old_replace not in prompt.negative:
             print("|ERROR| old_replace=", old_replace)
             print("|ERROR| prompt.main=",  prompt.main.replace("\n", " "))
@@ -357,16 +349,11 @@ class Script(scripts.Script):
 
         # IMPORTANT 
         # ---> Must update this per component in the accordion @ UI. (idk if there exists a smart way, but i lazy)
-        MINI_BLOCK_LENGTH = 2 # ["positive prompt" + "negative"]
-
-
-        # total_operations_counters = self.estimate_job_count_UI(promptSR_blocks_ui, MINI_BLOCK_LENGTH)
-        # state.job_count = total_operations_counters * p.n_iter * p.multiple_run_count
+        MINI_BLOCK_LENGTH = 3 # ["is_enabled" + "positive prompt" + "negative"]
 
         print(" | | | | |  IT'S GO TIME  | | | | |")
         print(" | | | | |  IT'S GO TIME  | | | | |")
         print(" | | | | |  IT'S GO TIME  | | | | |")
-        # print("    infinit |total_operations_counters", total_operations_counters)
         print("    infinit |state.job_count", state.job_count)
 
         radio_grid_type  = promptSR_blocks_ui[0]
@@ -379,13 +366,16 @@ class Script(scripts.Script):
         replaces_list: List[To_Replace] = []
         for idx in range(0, len(promptSR_blocks_ui), MINI_BLOCK_LENGTH): # auto1111 gradio thing is stupid, prob have to do this b/c `def ui()` must return gradio components
             print("(bigloop)   idx:", idx)
-            sr_prompt = promptSR_blocks_ui[idx]
-            sr_neg_prompt = promptSR_blocks_ui[idx + 1]
+            is_enabled_checkbox = promptSR_blocks_ui[idx]
+            sr_prompt = promptSR_blocks_ui[idx + 1]
+            sr_neg_prompt = promptSR_blocks_ui[idx + 2]
 
             sr_arr: List[str] = csv_string_to_list_strip(sr_prompt)
             sr_neg_arr: List[str] = csv_string_to_list_strip(sr_neg_prompt)
             if not sr_arr and not sr_arr:
                 continue #empty cell for both
+            if not is_enabled_checkbox:
+                continue
             promptSR_block = To_Replace()
             promptSR_block.sr_arr = sr_arr
             promptSR_block.sr_neg_arr = sr_neg_arr
